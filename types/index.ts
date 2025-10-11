@@ -3,6 +3,7 @@
 export interface User {
   id: string;
   wallet_address: string;
+  username?: string;
   ens_name?: string;
   public_key?: string;
   private_key_encrypted?: string;

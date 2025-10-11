@@ -40,9 +40,11 @@ export function useMetaMask() {
   const connect = useCallback(async () => {
     if (!isMetaMaskInstalled()) {
       toast.error('Please install MetaMask to continue')
-      window.open('https://metamask.io/download/', '_blank')
       return
     }
+
+    // Clear disconnected flag when user manually connects
+    localStorage.removeItem('wallet_disconnected')
 
     setIsLoading(true)
     try {
@@ -103,11 +105,18 @@ export function useMetaMask() {
 
   // Disconnect
   const disconnect = useCallback(() => {
-    storeLogout()
     setProvider(null)
     setSigner(null)
-    toast.success('Disconnected from wallet')
-  }, [storeLogout])
+    setUser(null)
+    setWalletAddress(null)
+    setEnsName(null)
+    setIsConnected(false)
+    
+    // Set flag to prevent auto-reconnect
+    localStorage.setItem('wallet_disconnected', 'true')
+    
+    toast.success('Wallet disconnected')
+  }, [setProvider, setSigner, setUser, setWalletAddress, setEnsName, setIsConnected])
 
   // Listen for account changes
   useEffect(() => {
@@ -141,6 +150,12 @@ export function useMetaMask() {
   useEffect(() => {
     const autoConnect = async () => {
       if (!isMetaMaskInstalled()) return
+      
+      // Check if user manually disconnected
+      const wasDisconnected = localStorage.getItem('wallet_disconnected')
+      if (wasDisconnected === 'true') {
+        return
+      }
       
       // Check if already connected in store
       const { isConnected } = useStore.getState()

@@ -16,7 +16,8 @@ import { useEncryption } from '@/hooks/useEncryption'
 import { usePinataUpload } from '@/hooks/usePinataUpload'
 import { useAnomalyMonitor } from '@/hooks/useAnomalyMonitor'
 import { saveFileMetadata } from '@/lib/supabase'
-import { generateEmbeddings } from '@/lib/ai-services'
+import { extractTextFromFile, tokenizeText, prepareTextForEmbedding } from '@/lib/documentProcessor'
+import { generateEmbeddings } from '@/lib/embeddingClient'
 import toast from 'react-hot-toast'
 
 export default function UploadPage() {
@@ -82,12 +83,35 @@ export default function UploadPage() {
       if (!ipfsResponse) {
         throw new Error('Upload to IPFS failed')
       }
+      setTotalProgress(60)
+
+      // Extract text content from file for embeddings
+      console.log('Extracting text from file for embeddings...')
+      const extractedText = await extractTextFromFile(file)
+      console.log('Extracted text length:', extractedText.length)
+      
+      // Prepare text with metadata
+      const preparedText = prepareTextForEmbedding(
+        file.name,
+        metadata.description || '',
+        metadata.tags || [],
+        extractedText
+      )
+      
+      // Tokenize for better processing
+      const textChunks = tokenizeText(preparedText, 512)
+      console.log('Text split into', textChunks.length, 'chunks')
+      
       setTotalProgress(70)
 
-      // Generate embeddings for search
-      const searchText = `${file.name} ${metadata.description || ''} ${metadata.tags?.join(' ') || ''}`
-      const embedding = await generateEmbeddings(searchText)
-      setTotalProgress(80)
+      // Generate embeddings using HuggingFace
+      console.log('Generating embeddings via HuggingFace API...')
+      const embedding = textChunks.length > 1
+        ? await generateEmbeddings(textChunks.join(' ')) // Join chunks for single embedding
+        : await generateEmbeddings(preparedText)
+      
+      console.log('Embedding generated:', embedding.length > 0 ? 'Success' : 'Failed')
+      setTotalProgress(85)
 
       // Save metadata to Supabase (including encryption data)
       const fileMetadata = await saveFileMetadata({
@@ -218,21 +242,6 @@ export default function UploadPage() {
             />
           </motion.div>
 
-          {/* Security Note */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="bg-muted/50">
-              <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground text-center">
-                  🔒 Your private keys are stored securely in your browser and never leave your device.
-                  Make sure to back them up!
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
         </main>
       </div>
     </div>

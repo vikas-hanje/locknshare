@@ -53,6 +53,23 @@ export async function updateUserLastLogin(userId: string): Promise<void> {
   }
 }
 
+export async function updateUserUsername(userId: string, username: string): Promise<User | null> {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ username: username })
+      .eq('id', userId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error updating username:', error)
+    return null
+  }
+}
+
 /**
  * File Metadata Management
  */

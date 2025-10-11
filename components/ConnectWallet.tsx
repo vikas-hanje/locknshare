@@ -9,19 +9,25 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 export function ConnectWallet() {
   const { connect, disconnect, isLoading } = useMetaMask()
-  const { isConnected, walletAddress, ensName } = useStore()
+  const { isConnected, walletAddress, ensName, user } = useStore()
 
   if (isConnected && walletAddress) {
+    // Prioritize: username > ENS name > truncated wallet address
+    const displayName = user?.username || ensName || truncateAddress(walletAddress)
+    const avatarInitials = user?.username 
+      ? user.username.slice(0, 2).toUpperCase()
+      : walletAddress.slice(2, 4).toUpperCase()
+
     return (
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary">
           <Avatar className="h-6 w-6">
             <AvatarFallback className="text-xs">
-              {walletAddress.slice(2, 4).toUpperCase()}
+              {avatarInitials}
             </AvatarFallback>
           </Avatar>
           <span className="text-sm font-medium">
-            {ensName || truncateAddress(walletAddress)}
+            {displayName}
           </span>
         </div>
         <Button

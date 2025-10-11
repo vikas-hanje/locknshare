@@ -58,6 +58,19 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, user?.id]) // Only re-run if connection or user changes
 
+  // Recalculate stats when files change
+  useEffect(() => {
+    if (files.length > 0 && userStats) {
+      const totalStorage = files.reduce((sum, file) => sum + file.file_size, 0)
+      const updatedStats = {
+        ...userStats,
+        total_files: files.length,
+        total_storage: totalStorage,
+      }
+      setUserStats(updatedStats as any)
+    }
+  }, [files.length]) // Only when file count changes
+
   // Memoize recent files to prevent recalculation
   const recentFiles = useMemo(() => files.slice(0, 3), [files])
 
@@ -71,7 +84,9 @@ export default function DashboardPage() {
           <div className="px-6 py-4 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold">Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Welcome back!</p>
+              <p className="text-sm text-muted-foreground">
+                Welcome back, {user?.username || 'User'}!
+              </p>
             </div>
             <div className="flex items-center gap-4">
               <ThemeToggle />
@@ -133,7 +148,7 @@ export default function DashboardPage() {
             >
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Security Score</CardTitle>
+                  <CardTitle className="text-sm font-medium">Threat Level</CardTitle>
                   <Shield className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>

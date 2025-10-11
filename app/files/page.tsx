@@ -22,6 +22,8 @@ export default function FilesPage() {
   const { isConnected, user, files, setFiles, keyPair, setKeyPair, removeFile } = useStore()
   const { decrypt, generateKeys } = useEncryption()
   const [isLoading, setIsLoading] = useState(true)
+  const [filterType, setFilterType] = useState<string>('all')
+  const [showFilterMenu, setShowFilterMenu] = useState(false)
 
   useEffect(() => {
     if (!isConnected) {
@@ -164,10 +166,50 @@ export default function FilesPage() {
         <main className="p-6">
           {/* Filters */}
           <div className="flex items-center gap-4 mb-6">
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
+            <div className="relative">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowFilterMenu(!showFilterMenu)}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filter: {filterType === 'all' ? 'All Files' : filterType.toUpperCase()}
+              </Button>
+              {showFilterMenu && (
+                <div className="absolute top-full left-0 mt-2 w-48 bg-card border rounded-lg shadow-lg z-10">
+                  <button
+                    onClick={() => { setFilterType('all'); setShowFilterMenu(false) }}
+                    className="w-full text-left px-4 py-2 hover:bg-accent rounded-t-lg"
+                  >
+                    All Files
+                  </button>
+                  <button
+                    onClick={() => { setFilterType('pdf'); setShowFilterMenu(false) }}
+                    className="w-full text-left px-4 py-2 hover:bg-accent"
+                  >
+                    PDF
+                  </button>
+                  <button
+                    onClick={() => { setFilterType('image'); setShowFilterMenu(false) }}
+                    className="w-full text-left px-4 py-2 hover:bg-accent"
+                  >
+                    Images
+                  </button>
+                  <button
+                    onClick={() => { setFilterType('video'); setShowFilterMenu(false) }}
+                    className="w-full text-left px-4 py-2 hover:bg-accent"
+                  >
+                    Videos
+                  </button>
+                  <button
+                    onClick={() => { setFilterType('document'); setShowFilterMenu(false) }}
+                    className="w-full text-left px-4 py-2 hover:bg-accent rounded-b-lg"
+                  >
+                    Documents
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Files Grid */}
@@ -175,15 +217,24 @@ export default function FilesPage() {
             <LoadingSpinner message="Loading files..." />
           ) : files.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {files.map((file) => (
-                <FileCard
-                  key={file.id}
-                  file={file}
-                  onView={handleDownload}
-                  onDownload={handleDownload}
-                  onDelete={handleDelete}
-                />
-              ))}
+              {files
+                .filter((file) => {
+                  if (filterType === 'all') return true
+                  if (filterType === 'pdf') return file.file_type.includes('pdf')
+                  if (filterType === 'image') return file.file_type.startsWith('image/')
+                  if (filterType === 'video') return file.file_type.startsWith('video/')
+                  if (filterType === 'document') return file.file_type.includes('document') || file.file_type.includes('text') || file.file_type.includes('word')
+                  return true
+                })
+                .map((file) => (
+                  <FileCard
+                    key={file.id}
+                    file={file}
+                    onView={handleDownload}
+                    onDownload={handleDownload}
+                    onDelete={handleDelete}
+                  />
+                ))}
             </div>
           ) : (
             <motion.div

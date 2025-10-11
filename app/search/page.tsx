@@ -10,7 +10,7 @@ import { SearchBar } from '@/components/SearchBar'
 import { FileCard } from '@/components/FileCard'
 import { useStore } from '@/store/useStore'
 import { FileMetadata } from '@/types'
-import { generateEmbeddings, cosineSimilarity } from '@/lib/ai-services'
+import { generateEmbeddings, cosineSimilarity } from '@/lib/embeddingClient'
 
 export default function SearchPage() {
   const router = useRouter()

@@ -1,0 +1,136 @@
+i am building a project on a file sharing mechanism via blockchain (pinata ipfs, i have the api for it), login via metamask, RSA encryption while uploading file from browser, store all the metadata in a supabase tabale with respective metamask ids(like all the generated keys, upload details(time and ip geo-location) and the file access list etc. and also user data). i also need a AI driven model for anomaly detection to user's account such as unauthorised access etc. and an AI model to generate word embeddings for semantic search of files from ipfs. so generate a well strucured prompt for claud 4.5 thinking code generator add the prompt to develop a modern frontend (light, modern look, with minimalist animation and respective messages to handle any eoors), the website should have both dark and light mode(use modern color pallet), user profile and setting options etc..
+
+
+
+System / Developer Instruction:
+You are an expert full-stack developer specializing in Next.js 14 + TypeScript + TailwindCSS + ShadCN/UI, with deep experience in web3 integration, Metamask authentication, IPFS/Pinata APIs, RSA cryptography in-browser, and AI-assisted search/anomaly detection UX design.
+Build a clean, modern, responsive frontend for a decentralized file-sharing application as per the following detailed specifications.
+🧩 Project Overview
+Project Name: BlockShare.AI
+Core Idea: A decentralized file sharing platform with:
+Uploads stored on IPFS via Pinata API
+Metamask login and user identity management
+RSA encryption in-browser for file security
+Supabase backend for metadata, user data, and access logs
+AI-powered anomaly detection for suspicious account activity
+Semantic search using AI-generated word embeddings from file metadata/text content
+⚙️ Tech Stack
+Framework: Next.js 14 (App Router)
+Language: TypeScript
+Styling: TailwindCSS + ShadCN/UI + Framer Motion for subtle animations
+State Management: Zustand or Context API
+Dark/Light Mode: Next Themes + Tailwind dark mode classes
+Web3: Ethers.js + MetaMask SDK
+File Handling: Pinata IPFS API + browser-based RSA encryption
+Database: Supabase (SDK integrated)
+AI:
+Endpoint for anomaly detection model
+Endpoint for semantic search model (embeddings API)
+Notifications: React Hot Toast or ShadCN toast system
+🧱 Core Features to Implement
+🔐 Authentication
+Metamask login with wallet signature verification.
+Display connected wallet address and ENS (if available).
+Store basic user info + wallet ID in Supabase.
+📁 File Upload & Management
+Encrypt files client-side using RSA before upload.
+Upload encrypted files to Pinata (IPFS).
+Store metadata (file hash, RSA keys, timestamp, IP geolocation, access list) in Supabase.
+Provide a clean upload UI with progress and success/error messages.
+🔍 AI Semantic Search
+Integrate search bar with semantic embeddings-based search.
+Allow users to find files by meaning, not just name or hash.
+Display ranked results with previews and metadata.
+🧠 AI Anomaly Detection
+Dashboard widget showing account “trust score” or recent anomaly alerts.
+Use backend API that checks for suspicious logins, IP mismatches, or activity patterns.
+👤 User Dashboard
+Show recent uploads, activity timeline, and quick access to files.
+Include stats like total storage used, recent IPs, and account alerts.
+Allow dark/light mode toggle and basic user settings (notifications, privacy).
+🎨 UI/UX Design Requirements
+Theme: Modern, clean, minimalistic — with subtle motion & clarity.
+Colors: Muted modern palette (light gray, off-white, blue-accent for light mode; charcoal, slate, and cyan for dark mode).
+Fonts: Inter or Satoshi.
+Animations: Use Framer Motion for soft fade/slide transitions (no flashy effects).
+Responsive: Mobile-first, works seamlessly on all screens.
+Error Handling: Clear toast messages for:
+Upload success/failure
+Encryption/decryption issues
+Network or API errors
+Unauthorized access attempts
+Key Pages:
+Landing Page – Intro, login, features summary
+Dashboard – File list, AI panels, quick actions
+Upload Page – RSA key generation, encryption progress, upload confirmation
+Search Page – AI semantic search UI
+Profile Page – Account details, settings, theme toggle
+Error/404 Page – Minimalist with helpful link
+🧩 Integrations (Example Flow)
+User logs in via MetaMask
+→ Wallet verified
+→ Session created in Supabase
+→ Fetch user’s stored keys or create new ones.
+User uploads file
+→ Encrypt with RSA public key in browser
+→ Upload to Pinata
+→ Store metadata in Supabase.
+User searches
+→ Input query sent to embeddings API
+→ Fetch relevant IPFS file metadata via Supabase
+→ Show ranked results with previews.
+Anomaly Detection
+→ Dashboard fetches account status from /api/anomaly endpoint
+→ Displays recent login/IP activity anomalies.
+🧰 Implementation Details
+Use React hooks for modular components (useEncryption, usePinataUpload, useSupabase, useAnomalyMonitor, useEmbeddingsSearch).
+Add graceful fallback states for loading, empty results, and connection issues.
+Use optimistic UI updates for better UX.
+Modularize components: UploadCard, SearchBar, FileList, AnomalyWidget, ThemeToggle, etc.
+Include TypeScript interfaces for all entities (User, FileMetadata, AnomalyRecord, EmbeddingResult).
+✅ Deliverables
+Complete, production-ready Next.js frontend with all routes and pages defined.
+Consistent design system (dark/light theme).
+Type-safe API integrations (Pinata, Supabase, MetaMask, AI APIs).
+Responsive UI components with loading/error states.
+Code commented and structured for easy extension.
+🧭 Tone and Output Style
+Output complete and self-contained code (can be pasted into a Next.js app).
+Include all necessary imports.
+Prefer composable architecture (components + hooks).
+Use TypeScript interfaces for all data models.
+Keep animations subtle and purposeful.
+Write clean, readable code.
+
+
+Light Theme
+Background: #F5F7FA
+Surface: #FFFFFF
+Primary: #4C6EF5 (soft indigo)
+Accent: #7B93DB
+Text: #1A1B1E
+Subtle Border: #DDE1E7
+Dark Theme
+Background: #1B1E26
+Surface: #252832
+Primary: #729BFF
+Accent: #A6B5E0
+Text: #E9ECF3
+Subtle Border: #343843
+
+
+few more small changes
+1. once i click on disconnect the ui auto tries to login using metamask and it auto logs in, make sure this does not happen
+2. on deleting or uploading files the dashboard stats "total files" and "storage used" must be updated immedeatly
+3. rename security score to threat level in dash board but keep the security status intact in both dashboard and security page
+4. in the profile page give the user option to add username so that the identification becomes easy (also should be updated in supabase to respective user id)
+5. the filter button is not working in "my files" page, fix it
+6. in "upload" page at the bottom there is a segment which says "🔒 Your private keys are stored securely in your browser and never leave your device. Make sure to back them up!" since we are storing both keys in supabase we can remove this message.
+7. if you find any quality life improvements (only small ones) you can implements them (tell me if you do) and this is not mandatory bu the way
+
+
+
+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
+
+
+now lets complete the embedding creation process, i am going to use "all-MiniLM-L6-v2" model from hugging face for word embedding generation. since we are dealing with pdf/ documents etc. firstly we can to perform a tokenization process and then send the file data interms of tokens to the model. so implement the tokenization locally and then send a request to hugging face for embeddings. once we receive back the embeddings update them in supabase to use them while searching. i already have the api so create one more variable in .env.local and i will add necessay things. by the way one more small change i instead of showing wallate address in dashboard/ UI show the username.
