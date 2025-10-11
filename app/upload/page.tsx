@@ -33,15 +33,15 @@ export default function UploadPage() {
       return
     }
 
-    // Generate keys if not exists
-    if (!keyPair) {
-      generateKeys().then((keys) => {
+    // Generate or restore keys if not exists
+    if (!keyPair && user) {
+      generateKeys(user.wallet_address).then((keys) => {
         if (keys) {
           setKeyPair(keys)
         }
       })
     }
-  }, [isConnected, keyPair, router, generateKeys, setKeyPair])
+  }, [isConnected, keyPair, user, router, generateKeys, setKeyPair])
 
   const handleUpload = async (
     file: File,

@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -26,7 +27,7 @@ const navItems = [
   { href: '/profile', icon: User, label: 'Profile' },
 ]
 
-export function Sidebar() {
+const SidebarComponent = () => {
   const pathname = usePathname()
   const { sidebarOpen, setSidebarOpen } = useStore()
 
@@ -57,8 +58,8 @@ export function Sidebar() {
               <Shield className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h2 className="font-bold text-lg">BlockShare</h2>
-              <p className="text-xs text-muted-foreground">.AI</p>
+              <h2 className="font-bold text-lg">LockNShare</h2>
+              <p className="text-xs text-muted-foreground">Secure File Sharing</p>
             </div>
           </Link>
           <Button
@@ -94,7 +95,7 @@ export function Sidebar() {
 
         <div className="p-4 border-t">
           <p className="text-xs text-muted-foreground text-center">
-            © 2024 BlockShare.AI
+            © 2024 LockNShare
           </p>
         </div>
       </motion.aside>
@@ -108,3 +109,6 @@ export function Sidebar() {
     </>
   )
 }
+
+// Memoize sidebar to prevent unnecessary re-renders
+export const Sidebar = memo(SidebarComponent)

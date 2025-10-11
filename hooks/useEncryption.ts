@@ -14,11 +14,29 @@ export function useEncryption() {
   const [isEncrypting, setIsEncrypting] = useState(false)
   const [isDecrypting, setIsDecrypting] = useState(false)
 
-  // Generate new RSA key pair
-  const generateKeys = useCallback(async (): Promise<RSAKeyPair | null> => {
+  // Generate new RSA key pair and store in localStorage
+  const generateKeys = useCallback(async (walletAddress?: string): Promise<RSAKeyPair | null> => {
     setIsGenerating(true)
     try {
+      // Check if keys already exist in localStorage for this wallet
+      if (walletAddress) {
+        const stored = localStorage.getItem(`encryption_keys_${walletAddress}`)
+        if (stored) {
+          const keys = JSON.parse(stored)
+          console.log('Restored encryption keys from localStorage')
+          return keys
+        }
+      }
+
+      // Generate new keys
       const keyPair = await generateRSAKeyPair()
+      
+      // Store in localStorage if wallet address provided
+      if (walletAddress) {
+        localStorage.setItem(`encryption_keys_${walletAddress}`, JSON.stringify(keyPair))
+        console.log('Stored encryption keys in localStorage')
+      }
+      
       toast.success('Encryption keys generated successfully')
       return keyPair
     } catch (error) {

@@ -64,8 +64,8 @@ export function useMetaMask() {
         // ENS not available
       }
 
-      // Sign message for authentication
-      const message = `Sign this message to authenticate with BlockShare.AI\n\nWallet: ${address}\nTimestamp: ${Date.now()}`
+      // Create signature message
+      const message = `Sign this message to authenticate with LockNShare\n\nWallet: ${address}\nTimestamp: ${Date.now()}`
       const signature = await web3Signer.signMessage(message)
 
       // Check if user exists in database

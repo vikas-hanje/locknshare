@@ -3,24 +3,24 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { FileText, Filter, Download, Trash2 } from 'lucide-react'
+import { FileText, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sidebar } from '@/components/Sidebar'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { ConnectWallet } from '@/components/ConnectWallet'
 import { FileCard } from '@/components/FileCard'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useStore } from '@/store/useStore'
 import { useEncryption } from '@/hooks/useEncryption'
-import { usePinataUpload } from '@/hooks/usePinataUpload'
 import { getUserFiles, deleteFile, updateFileAccessCount } from '@/lib/supabase'
-import { getFromIPFS } from '@/lib/pinata'
+import { getFromIPFS, unpinFromIPFS } from '@/lib/pinata'
 import { downloadFile } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
 export default function FilesPage() {
   const router = useRouter()
-  const { isConnected, user, files, setFiles, keyPair, removeFile } = useStore()
-  const { decrypt } = useEncryption()
+  const { isConnected, user, files, setFiles, keyPair, setKeyPair, removeFile } = useStore()
+  const { decrypt, generateKeys } = useEncryption()
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -31,6 +31,14 @@ export default function FilesPage() {
 
     const fetchFiles = async () => {
       if (!user) return
+      
+      // Restore encryption keys if not in store
+      if (!keyPair && user.wallet_address) {
+        const keys = await generateKeys(user.wallet_address)
+        if (keys) {
+          setKeyPair(keys)
+        }
+      }
       
       // Skip if we already have files
       if (files.length > 0) {
@@ -100,21 +108,34 @@ export default function FilesPage() {
   }
 
   const handleDelete = async (file: any) => {
-    if (!confirm(`Are you sure you want to delete "${file.file_name}"?`)) {
+    if (!confirm(`Are you sure you want to delete "${file.file_name}"? This will permanently remove it from IPFS.`)) {
       return
     }
 
     try {
+      toast.loading('Deleting file...', { id: 'delete' })
+
+      // Delete from IPFS first
+      console.log('Unpinning from IPFS:', file.ipfs_hash)
+      const unpinned = await unpinFromIPFS(file.ipfs_hash)
+      
+      if (!unpinned) {
+        console.warn('Failed to unpin from IPFS, continuing with database deletion')
+      } else {
+        console.log('Successfully unpinned from IPFS')
+      }
+
+      // Delete from Supabase
       const success = await deleteFile(file.id)
       if (success) {
         removeFile(file.id)
-        toast.success('File deleted successfully')
+        toast.success('File deleted from database and IPFS', { id: 'delete' })
       } else {
-        throw new Error('Delete failed')
+        throw new Error('Delete from database failed')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Delete error:', error)
-      toast.error('Failed to delete file')
+      toast.error(`Failed to delete file: ${error.message}`, { id: 'delete' })
     }
   }
 
@@ -151,15 +172,14 @@ export default function FilesPage() {
 
           {/* Files Grid */}
           {isLoading ? (
-            <div className="text-center py-12 text-muted-foreground">
-              Loading files...
-            </div>
+            <LoadingSpinner message="Loading files..." />
           ) : files.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {files.map((file) => (
                 <FileCard
                   key={file.id}
                   file={file}
+                  onView={handleDownload}
                   onDownload={handleDownload}
                   onDelete={handleDelete}
                 />

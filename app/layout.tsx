@@ -7,8 +7,8 @@ import { Toaster } from 'react-hot-toast'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'BlockShare.AI - Decentralized File Sharing',
-  description: 'Secure, encrypted, AI-powered decentralized file sharing platform',
+  title: 'LockNShare - Secure Decentralized File Sharing',
+  description: 'Secure, encrypted file sharing powered by blockchain and AI',
 }
 
 export default function RootLayout({

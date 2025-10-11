@@ -91,14 +91,38 @@ export async function uploadJSONToPinata(
  */
 export async function getFromIPFS(ipfsHash: string): Promise<Blob> {
   try {
-    const response = await axios.get(`${GATEWAY_URL}/${ipfsHash}`, {
-      responseType: 'blob',
-    })
+    console.log('Fetching from IPFS:', ipfsHash)
+    
+    // Try multiple gateways for reliability
+    const gateways = [
+      `${GATEWAY_URL}/${ipfsHash}`,
+      `https://gateway.pinata.cloud/ipfs/${ipfsHash}`,
+      `https://ipfs.io/ipfs/${ipfsHash}`,
+    ]
 
-    return response.data
-  } catch (error) {
+    let lastError: any = null
+    
+    for (const gateway of gateways) {
+      try {
+        console.log('Trying gateway:', gateway)
+        const response = await axios.get(gateway, {
+          responseType: 'blob',
+          timeout: 30000, // 30 second timeout
+        })
+
+        console.log('Successfully fetched from IPFS')
+        return response.data
+      } catch (err) {
+        console.warn('Gateway failed:', gateway, err)
+        lastError = err
+        continue
+      }
+    }
+
+    throw lastError || new Error('All IPFS gateways failed')
+  } catch (error: any) {
     console.error('Error fetching from IPFS:', error)
-    throw new Error('Failed to fetch file from IPFS')
+    throw new Error(`Failed to fetch file from IPFS: ${error.message || 'Unknown error'}`)
   }
 }
 

@@ -59,7 +59,7 @@ export default function LandingPage() {
               <Shield className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-bold text-xl">BlockShare<span className="text-primary">.AI</span></h1>
+              <h1 className="font-bold text-xl">LockNShare</h1>
             </div>
           </Link>
           <div className="flex items-center gap-4">
@@ -112,7 +112,7 @@ export default function LandingPage() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl font-bold mb-4">Why BlockShare.AI?</h2>
+          <h2 className="text-4xl font-bold mb-4">Why LockNShare?</h2>
           <p className="text-muted-foreground text-lg">
             The most advanced decentralized file sharing platform
           </p>
@@ -160,7 +160,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t py-8">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>© 2024 BlockShare.AI. All rights reserved.</p>
+          <p>© 2024 LockNShare. All rights reserved.</p>
           <p className="text-sm mt-2">Built with Next.js, Supabase, IPFS, and AI</p>
         </div>
       </footer>

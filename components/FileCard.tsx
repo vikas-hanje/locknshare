@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { FileMetadata } from '@/types'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,7 +17,7 @@ interface FileCardProps {
   onShare?: (file: FileMetadata) => void
 }
 
-export function FileCard({ file, onDownload, onView, onDelete, onShare }: FileCardProps) {
+const FileCardComponent = ({ file, onDownload, onView, onDelete, onShare }: FileCardProps) => {
   const fileExt = getFileExtension(file.file_name)
 
   return (
@@ -30,10 +31,12 @@ export function FileCard({ file, onDownload, onView, onDelete, onShare }: FileCa
         <CardContent className="pt-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-semibold text-lg truncate">{file.file_name}</h3>
+              <div className="flex items-start gap-2 mb-2">
+                <h3 className="font-semibold text-lg break-words line-clamp-2 flex-1">
+                  {file.file_name}
+                </h3>
                 {file.encrypted && (
-                  <Lock className="h-4 w-4 text-primary" />
+                  <Lock className="h-4 w-4 text-primary flex-shrink-0" />
                 )}
               </div>
               <div className="flex flex-wrap gap-2 mb-3">
@@ -57,7 +60,7 @@ export function FileCard({ file, onDownload, onView, onDelete, onShare }: FileCa
             ))}
           </div>
 
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground truncate">
             Uploaded {formatDate(file.created_at)}
           </div>
         </CardContent>
@@ -109,3 +112,11 @@ export function FileCard({ file, onDownload, onView, onDelete, onShare }: FileCa
     </motion.div>
   )
 }
+
+// Memoize to prevent unnecessary re-renders
+export const FileCard = memo(FileCardComponent, (prevProps: FileCardProps, nextProps: FileCardProps) => {
+  return (
+    prevProps.file.id === nextProps.file.id &&
+    prevProps.file.access_count === nextProps.file.access_count
+  )
+})

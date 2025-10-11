@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Upload, FileText, TrendingUp, Shield, ArrowRight } from 'lucide-react'
@@ -11,6 +11,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { ConnectWallet } from '@/components/ConnectWallet'
 import { FileCard } from '@/components/FileCard'
 import { AnomalyWidget } from '@/components/AnomalyWidget'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useStore } from '@/store/useStore'
 import { getUserFiles, getUserStats } from '@/lib/supabase'
 import { formatBytes } from '@/lib/utils'
@@ -57,7 +58,8 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, user?.id]) // Only re-run if connection or user changes
 
-  const recentFiles = files.slice(0, 3)
+  // Memoize recent files to prevent recalculation
+  const recentFiles = useMemo(() => files.slice(0, 3), [files])
 
   return (
     <div className="min-h-screen bg-background">
@@ -188,15 +190,13 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {isLoading ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      Loading...
-                    </div>
+                    <LoadingSpinner message="Loading files..." />
                   ) : recentFiles.length > 0 ? (
                     recentFiles.map((file) => (
                       <FileCard
                         key={file.id}
                         file={file}
-                        onView={() => router.push(`/files/${file.id}`)}
+                        onView={() => router.push('/files')}
                       />
                     ))
                   ) : (

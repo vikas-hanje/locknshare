@@ -1,4 +1,4 @@
-# BlockShare.AI 🔐
+# LockNShare 🔐
 
 A decentralized file-sharing platform with end-to-end encryption, IPFS storage, MetaMask authentication, and AI-powered features.
 
