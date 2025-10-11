@@ -1,0 +1,188 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { FileText, Filter, Download, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Sidebar } from '@/components/Sidebar'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { ConnectWallet } from '@/components/ConnectWallet'
+import { FileCard } from '@/components/FileCard'
+import { useStore } from '@/store/useStore'
+import { useEncryption } from '@/hooks/useEncryption'
+import { usePinataUpload } from '@/hooks/usePinataUpload'
+import { getUserFiles, deleteFile, updateFileAccessCount } from '@/lib/supabase'
+import { getFromIPFS } from '@/lib/pinata'
+import { downloadFile } from '@/lib/utils'
+import toast from 'react-hot-toast'
+
+export default function FilesPage() {
+  const router = useRouter()
+  const { isConnected, user, files, setFiles, keyPair, removeFile } = useStore()
+  const { decrypt } = useEncryption()
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    if (!isConnected) {
+      router.push('/')
+      return
+    }
+
+    const fetchFiles = async () => {
+      if (!user) return
+      
+      // Skip if we already have files
+      if (files.length > 0) {
+        setIsLoading(false)
+        return
+      }
+
+      setIsLoading(true)
+      try {
+        const userFiles = await getUserFiles(user.id)
+        setFiles(userFiles)
+      } catch (error) {
+        console.error('Error fetching files:', error)
+        toast.error('Failed to load files')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchFiles()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, user?.id]) // Only re-run if connection or user changes
+
+  const handleDownload = async (file: any) => {
+    if (!keyPair) {
+      toast.error('Encryption keys not found')
+      return
+    }
+
+    try {
+      toast.loading('Downloading and decrypting...', { id: 'download' })
+
+      // Download from IPFS
+      const encryptedBlob = await getFromIPFS(file.ipfs_hash)
+      const encryptedData = await encryptedBlob.text()
+
+      // Verify encryption metadata exists
+      if (!file.encrypted_key || !file.iv) {
+        throw new Error('Missing encryption metadata')
+      }
+
+      // Prepare encryption data for decryption
+      const encryptionResult = {
+        encryptedData: encryptedData,
+        encryptedKey: file.encrypted_key,
+        iv: file.iv,
+      }
+
+      // Decrypt
+      const decryptedData = await decrypt(encryptionResult, keyPair.privateKey)
+      if (!decryptedData) {
+        throw new Error('Decryption failed')
+      }
+
+      // Download
+      const blob = new Blob([decryptedData], { type: file.file_type })
+      downloadFile(blob, file.file_name)
+
+      // Update access count
+      await updateFileAccessCount(file.id)
+
+      toast.success('File downloaded successfully', { id: 'download' })
+    } catch (error: any) {
+      console.error('Download error:', error)
+      toast.error(error.message || 'Download failed', { id: 'download' })
+    }
+  }
+
+  const handleDelete = async (file: any) => {
+    if (!confirm(`Are you sure you want to delete "${file.file_name}"?`)) {
+      return
+    }
+
+    try {
+      const success = await deleteFile(file.id)
+      if (success) {
+        removeFile(file.id)
+        toast.success('File deleted successfully')
+      } else {
+        throw new Error('Delete failed')
+      }
+    } catch (error) {
+      console.error('Delete error:', error)
+      toast.error('Failed to delete file')
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Sidebar />
+      
+      <div className="lg:pl-64">
+        {/* Header */}
+        <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+          <div className="px-6 py-4 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">My Files</h1>
+              <p className="text-sm text-muted-foreground">
+                {files.length} file{files.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <ThemeToggle />
+              <ConnectWallet />
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="p-6">
+          {/* Filters */}
+          <div className="flex items-center gap-4 mb-6">
+            <Button variant="outline" size="sm">
+              <Filter className="h-4 w-4 mr-2" />
+              Filter
+            </Button>
+          </div>
+
+          {/* Files Grid */}
+          {isLoading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Loading files...
+            </div>
+          ) : files.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {files.map((file) => (
+                <FileCard
+                  key={file.id}
+                  file={file}
+                  onDownload={handleDownload}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center py-20"
+            >
+              <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-xl font-semibold mb-2">No files yet</h3>
+              <p className="text-muted-foreground mb-6">
+                Upload your first encrypted file to get started
+              </p>
+              <Button onClick={() => router.push('/upload')}>
+                Upload File
+              </Button>
+            </motion.div>
+          )}
+        </main>
+      </div>
+    </div>
+  )
+}
