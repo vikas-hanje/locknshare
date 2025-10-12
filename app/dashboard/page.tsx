@@ -58,9 +58,11 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, user?.id]) // Only re-run if connection or user changes
 
-  // Recalculate stats when files change
   useEffect(() => {
-    if (files.length >= 0) {
+    if (!files || files.length === 0) return
+    
+    // Calculate total storage from files
+    if (files.length > 0) {
       const totalStorage = files.reduce((sum, file) => sum + file.file_size, 0)
       const updatedStats = {
         ...(userStats || {}),
@@ -71,7 +73,8 @@ export default function DashboardPage() {
       }
       setUserStats(updatedStats as any)
     }
-  }, [files]) // Trigger on any file array change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files]) // setUserStats is stable, userStats is only read for initial values
 
   // Memoize recent files to prevent recalculation
   const recentFiles = useMemo(() => files.slice(0, 3), [files])

@@ -90,7 +90,7 @@ export async function encryptFile(
     return {
       encryptedData: arrayBufferToBase64(encryptedData),
       encryptedKey: arrayBufferToBase64(encryptedKey),
-      iv: arrayBufferToBase64(iv),
+      iv: arrayBufferToBase64(iv.buffer),
     }
   } catch (error) {
     console.error('Error encrypting file:', error)
