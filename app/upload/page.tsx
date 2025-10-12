@@ -16,7 +16,7 @@ import { useEncryption } from '@/hooks/useEncryption'
 import { usePinataUpload } from '@/hooks/usePinataUpload'
 import { useAnomalyMonitor } from '@/hooks/useAnomalyMonitor'
 import { saveFileMetadata } from '@/lib/supabase'
-import { encryptKeyForUsers } from '@/lib/sharedEncryption'
+import { encryptKeyForUsersFromOwnerEncrypted } from '@/lib/sharedEncryption'
 import { extractTextFromFile, tokenizeText, prepareTextForEmbedding } from '@/lib/documentProcessor'
 import { generateEmbeddings } from '@/lib/embeddingClient'
 import toast from 'react-hot-toast'
@@ -133,8 +133,9 @@ export default function UploadPage() {
         .filter(Boolean)
       if (normalizedSharedWith.length > 0) {
         console.log(`Encrypting file key for ${normalizedSharedWith.length} recipients...`)
-        sharedKeys = await encryptKeyForUsers(
+        sharedKeys = await encryptKeyForUsersFromOwnerEncrypted(
           encryptedResult.encryptedKey,
+          keyPair.privateKey,
           normalizedSharedWith
         )
         console.log(`✅ Encrypted keys for ${sharedKeys.length} recipients`)

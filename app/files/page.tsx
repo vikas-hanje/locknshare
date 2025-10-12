@@ -16,7 +16,7 @@ import { useEncryption } from '@/hooks/useEncryption'
 import { getUserFiles, getAccessibleFiles, deleteFile, updateFileAccessCount, updateFileMetadata } from '@/lib/supabase'
 import { getFromIPFS, unpinFromIPFS } from '@/lib/pinata'
 import { downloadFile } from '@/lib/utils'
-import { encryptKeyForUsers } from '@/lib/sharedEncryption'
+import { encryptKeyForUsersFromOwnerEncrypted } from '@/lib/sharedEncryption'
 import { FileMetadata } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -79,15 +79,24 @@ export default function FilesPage() {
               if (!file.encrypted_key) continue
 
               console.log(`Backfilling shared keys for ${file.file_name}:`, missing)
-              const newKeys = await encryptKeyForUsers(file.encrypted_key, missing.map(u => (u || '').toLowerCase()))
+              const ownerPriv = keyPair?.privateKey
+              if (!ownerPriv) continue
+              const newKeys = await encryptKeyForUsersFromOwnerEncrypted(
+                file.encrypted_key,
+                ownerPriv,
+                missing.map(u => (u || '').toLowerCase())
+              )
               if (newKeys.length > 0) {
                 const merged = [
                   ...existingKeys.filter(k => recipients.includes(k.username)),
                   ...newKeys,
                 ]
                 await updateFileMetadata(file.id, { shared_keys: merged } as any)
-                // Update local state optimistically
-                setFiles(prev => prev.map(f => f.id === file.id ? { ...f, shared_keys: merged } : f))
+                // Update local state optimistically (store expects an array, not updater fn)
+                const updatedList: FileMetadata[] = (files || []).map((f: any) => (
+                  f.id === file.id ? { ...f, shared_keys: merged } : f
+                ))
+                setFiles(updatedList as any)
                 console.log(`✅ Backfilled ${newKeys.length} shared key(s) for ${file.file_name}`)
               }
             }

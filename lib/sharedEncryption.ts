@@ -11,6 +11,61 @@ interface EncryptedKeyForUser {
 }
 
 /**
+ * Decrypt owner's RSA-encrypted AES key with owner's private key (PKCS8 base64)
+ */
+async function decryptOwnerEncryptedAesKey(
+  ownerEncryptedAesKeyBase64: string,
+  ownerPrivateKeyBase64: string
+): Promise<ArrayBuffer> {
+  // Import owner's private key
+  const privateKeyBuffer = base64ToArrayBuffer(ownerPrivateKeyBase64)
+  const privateKey = await window.crypto.subtle.importKey(
+    'pkcs8',
+    privateKeyBuffer,
+    {
+      name: 'RSA-OAEP',
+      hash: 'SHA-256',
+    },
+    true,
+    ['decrypt']
+  )
+
+  // Decrypt AES key
+  const encryptedKeyBuffer = base64ToArrayBuffer(ownerEncryptedAesKeyBase64)
+  const rawAesKeyBuffer = await window.crypto.subtle.decrypt(
+    {
+      name: 'RSA-OAEP',
+    },
+    privateKey,
+    encryptedKeyBuffer
+  )
+
+  return rawAesKeyBuffer
+}
+
+/**
+ * Encrypt AES key for multiple users starting from the owner's encrypted AES key
+ * This is used when we only have file.encrypted_key (encrypted with owner's public key)
+ */
+export async function encryptKeyForUsersFromOwnerEncrypted(
+  ownerEncryptedAesKeyBase64: string,
+  ownerPrivateKeyBase64: string,
+  usernames: string[]
+): Promise<EncryptedKeyForUser[]> {
+  try {
+    const rawAesKeyBuffer = await decryptOwnerEncryptedAesKey(
+      ownerEncryptedAesKeyBase64,
+      ownerPrivateKeyBase64
+    )
+    const rawAesKeyBase64 = arrayBufferToBase64(rawAesKeyBuffer)
+    return await encryptKeyForUsers(rawAesKeyBase64, usernames)
+  } catch (error) {
+    console.error('Error preparing shared keys from owner-encrypted AES key:', error)
+    return []
+  }
+}
+
+/**
  * Get public key for a username
  */
 export async function getPublicKeyForUsername(username: string): Promise<string | null> {

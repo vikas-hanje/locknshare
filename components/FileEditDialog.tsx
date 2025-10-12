@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { X, Users, Tag } from 'lucide-react'
 import { updateFileMetadata } from '@/lib/supabase'
-import { encryptKeyForUsers } from '@/lib/sharedEncryption'
+import { encryptKeyForUsersFromOwnerEncrypted } from '@/lib/sharedEncryption'
+import { useStore } from '@/store/useStore'
 import toast from 'react-hot-toast'
 
 interface FileEditDialogProps {
@@ -20,6 +21,7 @@ interface FileEditDialogProps {
 }
 
 export function FileEditDialog({ file, isOpen, onClose, onUpdate }: FileEditDialogProps) {
+  const { keyPair } = useStore()
   const [tags, setTags] = useState<string[]>(file.tags || [])
   const [currentTag, setCurrentTag] = useState('')
   const [sharedWith, setSharedWith] = useState<string[]>(file.shared_with || [])
@@ -79,8 +81,17 @@ export function FileEditDialog({ file, isOpen, onClose, onUpdate }: FileEditDial
         ...missingUsers,
       ]))
       if (usersNeedingKeys.length > 0 && file.encrypted_key) {
+        if (!keyPair?.privateKey) {
+          toast.error('Owner private key not available. Please reconnect wallet and try again.', { id: 'encrypt' })
+          setIsSaving(false)
+          return
+        }
         toast.loading('Encrypting keys for new users...', { id: 'encrypt' })
-        const newKeys = await encryptKeyForUsers(file.encrypted_key, usersNeedingKeys)
+        const newKeys = await encryptKeyForUsersFromOwnerEncrypted(
+          file.encrypted_key,
+          keyPair.privateKey,
+          usersNeedingKeys
+        )
         
         // Merge with existing shared keys
         updatedSharedKeys = [
