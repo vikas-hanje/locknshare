@@ -63,8 +63,8 @@ export function FileEditDialog({ file, isOpen, onClose, onUpdate }: FileEditDial
     try {
       // Update in database
       const success = await updateFileMetadata(file.id, {
-        tags: tags.length > 0 ? tags : null,
-        shared_with: sharedWith.length > 0 ? sharedWith : null,
+        tags: tags.length > 0 ? tags : undefined,
+        shared_with: sharedWith.length > 0 ? sharedWith : undefined,
       })
 
       if (success) {
