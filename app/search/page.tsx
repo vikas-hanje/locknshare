@@ -17,6 +17,7 @@ export default function SearchPage() {
   const { isConnected, files } = useStore()
   const [results, setResults] = useState<FileMetadata[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
 
   useEffect(() => {
     if (!isConnected) {
@@ -26,6 +27,7 @@ export default function SearchPage() {
 
   const handleSearch = async (query: string) => {
     setIsSearching(true)
+    setHasSearched(true)
     try {
       const queryLower = query.toLowerCase()
       
@@ -113,7 +115,10 @@ export default function SearchPage() {
               </div>
             ) : (
               <div className="text-center py-12 text-muted-foreground">
-                Enter a search query to find files
+                {hasSearched 
+                  ? "No files found matching your query. Try different keywords or tags."
+                  : "Enter a search query to find files"
+                }
               </div>
             )}
           </div>

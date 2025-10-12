@@ -21,20 +21,38 @@ export async function POST(request: NextRequest) {
     // Handle multiple texts (average them)
     if (texts && Array.isArray(texts)) {
       console.log(`Generating averaged embedding for ${texts.length} text chunks`)
-      embedding = await generateAveragedEmbedding(texts)
+      try {
+        embedding = await generateAveragedEmbedding(texts)
+      } catch (error: any) {
+        console.error('Error generating averaged embedding:', error.message)
+        return NextResponse.json(
+          { error: error.message || 'Failed to generate averaged embeddings' },
+          { status: 500 }
+        )
+      }
     } 
     // Handle single text
     else if (text) {
-      console.log('Generating embedding for single text')
-      embedding = await generateSingleEmbedding(text)
+      console.log('Generating embedding for single text (length:', text.length, 'chars)')
+      try {
+        embedding = await generateSingleEmbedding(text)
+      } catch (error: any) {
+        console.error('Error generating single embedding:', error.message)
+        return NextResponse.json(
+          { error: error.message || 'Failed to generate single embedding' },
+          { status: 500 }
+        )
+      }
     }
 
-    if (!embedding) {
+    if (!embedding || embedding.length === 0) {
       return NextResponse.json(
-        { error: 'Failed to generate embeddings' },
+        { error: 'Failed to generate embeddings - empty result' },
         { status: 500 }
       )
     }
+
+    console.log('Successfully generated embedding with', embedding.length, 'dimensions')
 
     return NextResponse.json({
       embedding: embedding,

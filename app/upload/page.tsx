@@ -106,11 +106,23 @@ export default function UploadPage() {
 
       // Generate embeddings using HuggingFace
       console.log('Generating embeddings via HuggingFace API...')
-      const embedding = textChunks.length > 1
-        ? await generateEmbeddings(textChunks.join(' ')) // Join chunks for single embedding
-        : await generateEmbeddings(preparedText)
+      let embedding: number[] = []
       
-      console.log('Embedding generated:', embedding.length > 0 ? 'Success' : 'Failed')
+      try {
+        embedding = textChunks.length > 1
+          ? await generateEmbeddings(textChunks.join(' ')) // Join chunks for single embedding
+          : await generateEmbeddings(preparedText)
+        
+        console.log('Embedding generated successfully:', embedding.length, 'dimensions')
+      } catch (embeddingError: any) {
+        console.error('Embedding generation failed:', embeddingError.message || embeddingError)
+        // Show warning but continue with upload
+        toast.error('Embedding generation failed: ' + (embeddingError.message || 'Unknown error'), {
+          duration: 5000,
+        })
+        console.warn('Continuing upload without embeddings (search functionality will be limited)')
+      }
+      
       setTotalProgress(85)
 
       // Save metadata to Supabase (including encryption data)

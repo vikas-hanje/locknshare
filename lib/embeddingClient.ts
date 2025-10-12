@@ -10,6 +10,7 @@
 export async function generateEmbeddings(text: string): Promise<number[]> {
   try {
     console.log('Calling embeddings API endpoint...')
+    console.log('Text length:', text.length, 'characters')
     
     const response = await fetch('/api/embeddings', {
       method: 'POST',
@@ -20,17 +21,23 @@ export async function generateEmbeddings(text: string): Promise<number[]> {
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `API error: ${response.status}`)
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      const errorMsg = errorData.error || `API error: ${response.status}`
+      console.error('Embeddings API error:', errorMsg)
+      throw new Error(errorMsg)
     }
 
     const data = await response.json()
     console.log('Embeddings API response:', data.dimensions, 'dimensions')
     
-    return data.embedding || []
+    if (!data.embedding || data.embedding.length === 0) {
+      throw new Error('Empty embedding returned from API')
+    }
+    
+    return data.embedding
   } catch (error: any) {
-    console.error('Error generating embeddings:', error)
-    return []
+    console.error('Error generating embeddings:', error.message || error)
+    throw error // Re-throw instead of returning empty array
   }
 }
 
@@ -41,6 +48,7 @@ export async function generateEmbeddings(text: string): Promise<number[]> {
 export async function generateEmbeddingsForChunks(texts: string[]): Promise<number[]> {
   try {
     console.log(`Calling embeddings API for ${texts.length} chunks...`)
+    console.log('Total text length:', texts.reduce((sum, t) => sum + t.length, 0), 'characters')
     
     const response = await fetch('/api/embeddings', {
       method: 'POST',
@@ -51,17 +59,23 @@ export async function generateEmbeddingsForChunks(texts: string[]): Promise<numb
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `API error: ${response.status}`)
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      const errorMsg = errorData.error || `API error: ${response.status}`
+      console.error('Embeddings API error:', errorMsg)
+      throw new Error(errorMsg)
     }
 
     const data = await response.json()
     console.log('Averaged embeddings generated:', data.dimensions, 'dimensions')
     
-    return data.embedding || []
+    if (!data.embedding || data.embedding.length === 0) {
+      throw new Error('Empty embedding returned from API')
+    }
+    
+    return data.embedding
   } catch (error: any) {
-    console.error('Error generating embeddings for chunks:', error)
-    return []
+    console.error('Error generating embeddings for chunks:', error.message || error)
+    throw error // Re-throw instead of returning empty array
   }
 }
 

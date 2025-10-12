@@ -1,9 +1,12 @@
 /**
  * Hugging Face API Integration
  * Using all-MiniLM-L6-v2 model for sentence embeddings
+ * Now using the official @huggingface/inference library for better compatibility
  */
 
-const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2'
+import { HfInference } from '@huggingface/inference'
+
+const MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
 
 interface EmbeddingResponse {
   embeddings: number[][]
@@ -19,47 +22,73 @@ export async function generateEmbeddings(
   const apiKey = process.env.HUGGINGFACE_API_KEY
 
   if (!apiKey) {
-    console.error('HUGGINGFACE_API_KEY not found in environment variables')
-    return null
+    const errorMsg = 'HUGGINGFACE_API_KEY not found in environment variables'
+    console.error(errorMsg)
+    throw new Error(errorMsg)
+  }
+
+  // Validate API key format
+  if (!apiKey.startsWith('hf_')) {
+    const errorMsg = 'Invalid HuggingFace API key format (should start with hf_)'
+    console.error(errorMsg)
+    throw new Error(errorMsg)
   }
 
   try {
-    console.log('Generating embeddings for text(s):', Array.isArray(texts) ? texts.length : 1)
-
-    const response = await fetch(HUGGINGFACE_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: Array.isArray(texts) ? texts : texts,
-        options: {
-          wait_for_model: true,
-        },
-      }),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('HuggingFace API error:', response.status, errorText)
+    // Initialize HuggingFace Inference client
+    const hf = new HfInference(apiKey)
+    
+    const isSingleInput = typeof texts === 'string'
+    console.log('🔄 Generating embeddings for text(s):', isSingleInput ? 1 : (texts as string[]).length)
+    console.log('📝 Text lengths:', isSingleInput ? [(texts as string).length] : (texts as string[]).map(t => t.length))
+    
+    // Use the official featureExtraction method
+    if (isSingleInput) {
+      console.log('Using featureExtraction for single text')
+      const embedding = await hf.featureExtraction({
+        model: MODEL_NAME,
+        inputs: texts as string,
+      })
       
-      // Handle rate limiting
-      if (response.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again in a moment.')
+      console.log('✅ Single embedding generated')
+      console.log('✅ Embedding dimensions:', Array.isArray(embedding) ? embedding.length : 'unknown')
+      
+      // Return as 2D array for consistency
+      return [embedding as number[]]
+    } else {
+      // For multiple texts, process each one
+      console.log('Processing multiple texts...')
+      const textsArray = texts as string[]
+      const embeddings: number[][] = []
+      
+      for (let i = 0; i < textsArray.length; i++) {
+        console.log(`Processing text ${i + 1}/${textsArray.length}...`)
+        const embedding = await hf.featureExtraction({
+          model: MODEL_NAME,
+          inputs: textsArray[i],
+        })
+        embeddings.push(embedding as number[])
       }
       
-      throw new Error(`HuggingFace API error: ${response.status}`)
+      console.log('✅ All embeddings generated successfully')
+      console.log('✅ Generated', embeddings.length, 'vectors')
+      console.log('✅ Embedding dimensions:', embeddings[0]?.length || 0)
+      return embeddings
     }
-
-    const data = await response.json()
-    
-    // HuggingFace returns embeddings directly as array
-    console.log('Embeddings generated successfully')
-    return Array.isArray(data[0]) ? data : [data]
   } catch (error: any) {
-    console.error('Error generating embeddings:', error)
-    return null
+    console.error('❌ Error generating embeddings:', error.message || error)
+    
+    // Provide more helpful error messages
+    if (error.message && error.message.includes('401')) {
+      throw new Error('Invalid or expired HuggingFace API key. Please check your credentials.')
+    } else if (error.message && error.message.includes('429')) {
+      throw new Error('Rate limit exceeded. Please try again in a moment.')
+    } else if (error.message && error.message.includes('503')) {
+      throw new Error('Model is loading. Please try again in a few seconds.')
+    }
+    
+    // Re-throw to propagate the error with details
+    throw error
   }
 }
 
@@ -70,14 +99,19 @@ export async function generateEmbeddings(
 export async function generateSingleEmbedding(
   text: string
 ): Promise<number[] | null> {
-  const embeddings = await generateEmbeddings(text)
-  
-  if (!embeddings || embeddings.length === 0) {
-    return null
+  try {
+    const embeddings = await generateEmbeddings(text)
+    
+    if (!embeddings || embeddings.length === 0) {
+      throw new Error('No embeddings generated')
+    }
+    
+    // Return the first (and usually only) embedding
+    return embeddings[0]
+  } catch (error: any) {
+    console.error('Error in generateSingleEmbedding:', error.message || error)
+    throw error
   }
-  
-  // Return the first (and usually only) embedding
-  return embeddings[0]
 }
 
 /**
@@ -87,7 +121,9 @@ export async function generateSingleEmbedding(
 export async function generateAveragedEmbedding(
   textChunks: string[]
 ): Promise<number[] | null> {
-  if (textChunks.length === 0) return null
+  if (textChunks.length === 0) {
+    throw new Error('No text chunks provided')
+  }
   
   // For single chunk, just return its embedding
   if (textChunks.length === 1) {
@@ -99,8 +135,10 @@ export async function generateAveragedEmbedding(
     const embeddings = await generateEmbeddings(textChunks)
     
     if (!embeddings || embeddings.length === 0) {
-      return null
+      throw new Error('No embeddings generated for chunks')
     }
+    
+    console.log(`Averaging ${embeddings.length} embeddings`)
     
     // Average all embeddings
     const embeddingSize = embeddings[0].length
@@ -117,10 +155,11 @@ export async function generateAveragedEmbedding(
       averaged[i] /= embeddings.length
     }
     
+    console.log(`Averaged embedding dimension: ${averaged.length}`)
     return averaged
-  } catch (error) {
-    console.error('Error generating averaged embedding:', error)
-    return null
+  } catch (error: any) {
+    console.error('Error generating averaged embedding:', error.message || error)
+    throw error
   }
 }
 
