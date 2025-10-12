@@ -40,6 +40,8 @@ export function FileEditDialog({ file, isOpen, onClose, onUpdate }: FileEditDial
 
   const handleAddUsername = () => {
     let username = currentUsername.trim()
+    // Normalize
+    username = username.toLowerCase()
     
     // Add @ prefix if not present
     if (username && !username.startsWith('@')) {
@@ -68,17 +70,24 @@ export function FileEditDialog({ file, isOpen, onClose, onUpdate }: FileEditDial
       
       let updatedSharedKeys = file.shared_keys || []
       
+      // Backfill: users listed in shared_with but missing in shared_keys
+      const missingUsers = sharedWith.filter(u => !updatedSharedKeys.some((k: any) => k.username === u))
+      
       // If new users were added, encrypt the file key for them
-      if (newUsers.length > 0 && file.encrypted_key) {
+      const usersNeedingKeys = Array.from(new Set([...
+        newUsers,
+        ...missingUsers,
+      ]))
+      if (usersNeedingKeys.length > 0 && file.encrypted_key) {
         toast.loading('Encrypting keys for new users...', { id: 'encrypt' })
-        const newKeys = await encryptKeyForUsers(file.encrypted_key, newUsers)
+        const newKeys = await encryptKeyForUsers(file.encrypted_key, usersNeedingKeys)
         
         // Merge with existing shared keys
         updatedSharedKeys = [
           ...updatedSharedKeys.filter((k: any) => sharedWith.includes(k.username)),
           ...newKeys
         ]
-        toast.success(`Encrypted keys for ${newKeys.length} new users`, { id: 'encrypt' })
+        toast.success(`Encrypted keys for ${newKeys.length} user(s)`, { id: 'encrypt' })
       } else if (sharedWith.length < originalShared.length) {
         // Users were removed - filter out their keys
         updatedSharedKeys = updatedSharedKeys.filter((k: any) => sharedWith.includes(k.username))

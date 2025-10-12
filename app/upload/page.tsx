@@ -126,13 +126,16 @@ export default function UploadPage() {
       
       setTotalProgress(85)
 
-      // If file is shared, encrypt AES key for each recipient
+      // If file is shared, normalize usernames and encrypt AES key for each recipient
       let sharedKeys: any[] = []
-      if (metadata.sharedWith && metadata.sharedWith.length > 0) {
-        console.log(`Encrypting file key for ${metadata.sharedWith.length} recipients...`)
+      const normalizedSharedWith = (metadata.sharedWith || [])
+        .map(u => u.replace(/^@/, '').toLowerCase())
+        .filter(Boolean)
+      if (normalizedSharedWith.length > 0) {
+        console.log(`Encrypting file key for ${normalizedSharedWith.length} recipients...`)
         sharedKeys = await encryptKeyForUsers(
           encryptedResult.encryptedKey,
-          metadata.sharedWith
+          normalizedSharedWith
         )
         console.log(`✅ Encrypted keys for ${sharedKeys.length} recipients`)
       }
@@ -152,7 +155,7 @@ export default function UploadPage() {
         iv: encryptedResult.iv,
         description: metadata.description,
         tags: metadata.tags,
-        shared_with: metadata.sharedWith,
+        shared_with: normalizedSharedWith,
         shared_keys: sharedKeys.length > 0 ? sharedKeys : undefined,
         embedding_vector: embedding.length > 0 ? embedding : undefined,
         created_at: new Date().toISOString(),

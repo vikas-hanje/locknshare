@@ -44,12 +44,6 @@ export default function FilesPage() {
           setKeyPair(keys)
         }
       }
-      
-      // Skip if we already have files
-      if (files.length > 0) {
-        setIsLoading(false)
-        return
-      }
 
       setIsLoading(true)
       try {
@@ -77,7 +71,7 @@ export default function FilesPage() {
 
     fetchFiles()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, user?.id]) // Only re-run if connection or user changes
+  }, [isConnected, user?.id, user?.username]) // Re-run when username becomes available
 
   const handleDownload = async (file: any) => {
     if (!keyPair) {
@@ -103,12 +97,13 @@ export default function FilesPage() {
       
       if (isSharedFile && file.shared_keys && user?.username) {
         // This is a shared file - find the key encrypted for this user
-        const sharedKey = file.shared_keys.find((k: any) => k.username === user.username)
+        const myUsername = user.username.toLowerCase()
+        const sharedKey = file.shared_keys.find((k: any) => (k.username || '').toLowerCase() === myUsername)
         if (sharedKey) {
           encryptedKeyToUse = sharedKey.encrypted_aes_key
-          console.log(`✅ Using shared key for @${user.username}`)
+          console.log(`✅ Using shared key for @${myUsername}`)
         } else {
-          throw new Error(`No encryption key found for @${user.username}. File owner needs to re-share.`)
+          throw new Error(`No encryption key found for @${myUsername}. File owner needs to re-share.`)
         }
       }
 

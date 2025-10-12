@@ -55,9 +55,13 @@ export async function updateUserLastLogin(userId: string): Promise<void> {
 
 export async function updateUserUsername(userId: string, username: string): Promise<User | null> {
   try {
+    const normalized = (username || '')
+      .trim()
+      .replace(/^@/, '')
+      .toLowerCase()
     const { data, error } = await supabase
       .from('users')
-      .update({ username: username })
+      .update({ username: normalized })
       .eq('id', userId)
       .select()
       .single()
@@ -152,12 +156,13 @@ export async function getAccessibleFiles(userId: string, username?: string): Pro
 
     // If user has a username, get files shared with them
     if (username) {
+      const lowerUsername = username.toLowerCase()
       // Use overlaps operator to check if username is in shared_with array
       // This is more reliable than 'cs' for text[] columns
       const { data: sharedFiles, error: sharedError} = await supabase
         .from('file_metadata')
         .select('*')
-        .overlaps('shared_with', [username]) // overlaps operator for array matching
+        .overlaps('shared_with', [lowerUsername]) // overlaps operator for array matching
         .neq('user_id', userId) // Don't include files they already own
         .order('created_at', { ascending: false })
 
@@ -168,7 +173,7 @@ export async function getAccessibleFiles(userId: string, username?: string): Pro
         return ownedFiles || []
       }
 
-      console.log(`✅ Found ${sharedFiles?.length || 0} files shared with @${username}`)
+      console.log(`✅ Found ${sharedFiles?.length || 0} files shared with @${lowerUsername}`)
       if (sharedFiles && sharedFiles.length > 0) {
         console.log('Shared files:', sharedFiles.map(f => ({ name: f.file_name, shared_with: f.shared_with })))
       }
