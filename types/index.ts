@@ -5,6 +5,7 @@ export interface User {
   wallet_address: string;
   username?: string;
   ens_name?: string;
+  profile_image_url?: string;
   public_key?: string;
   private_key_encrypted?: string;
   created_at: string;

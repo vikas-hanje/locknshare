@@ -60,16 +60,18 @@ export default function DashboardPage() {
 
   // Recalculate stats when files change
   useEffect(() => {
-    if (files.length > 0 && userStats) {
+    if (files.length >= 0) {
       const totalStorage = files.reduce((sum, file) => sum + file.file_size, 0)
       const updatedStats = {
-        ...userStats,
+        ...(userStats || {}),
+        total_uploads: files.length,
+        total_storage_used: totalStorage,
         total_files: files.length,
         total_storage: totalStorage,
       }
       setUserStats(updatedStats as any)
     }
-  }, [files.length]) // Only when file count changes
+  }, [files]) // Trigger on any file array change
 
   // Memoize recent files to prevent recalculation
   const recentFiles = useMemo(() => files.slice(0, 3), [files])

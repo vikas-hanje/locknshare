@@ -70,6 +70,23 @@ export async function updateUserUsername(userId: string, username: string): Prom
   }
 }
 
+export async function updateUserProfileImage(userId: string, profileImageUrl: string): Promise<User | null> {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ profile_image_url: profileImageUrl })
+      .eq('id', userId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error updating profile image:', error)
+    return null
+  }
+}
+
 /**
  * File Metadata Management
  */

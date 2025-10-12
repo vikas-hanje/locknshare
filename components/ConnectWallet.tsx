@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useMetaMask } from '@/hooks/useMetaMask'
 import { useStore } from '@/store/useStore'
 import { truncateAddress } from '@/lib/utils'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 export function ConnectWallet() {
   const { connect, disconnect, isLoading } = useMetaMask()
@@ -14,17 +14,18 @@ export function ConnectWallet() {
   if (isConnected && walletAddress) {
     // Prioritize: username > ENS name > truncated wallet address
     const displayName = user?.username || ensName || truncateAddress(walletAddress)
-    const avatarInitials = user?.username 
-      ? user.username.slice(0, 2).toUpperCase()
-      : walletAddress.slice(2, 4).toUpperCase()
 
     return (
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary">
           <Avatar className="h-6 w-6">
-            <AvatarFallback className="text-xs">
-              {avatarInitials}
-            </AvatarFallback>
+            {user?.profile_image_url ? (
+              <AvatarImage src={user.profile_image_url} alt={displayName} />
+            ) : (
+              <AvatarFallback className="text-xs">
+                {user?.username ? user.username.charAt(0).toUpperCase() : '?'}
+              </AvatarFallback>
+            )}
           </Avatar>
           <span className="text-sm font-medium">
             {displayName}
