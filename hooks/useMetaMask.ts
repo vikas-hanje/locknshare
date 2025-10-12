@@ -208,6 +208,22 @@ export function useMetaMask() {
             setWalletAddress(address)
             setEnsName(ensName)
             setIsConnected(true)
+            
+            // Initialize encryption keys on auto-connect (CRITICAL FOR FILE SHARING)
+            try {
+              // Try to get keys from localStorage first (fast path)
+              const storedKeys = localStorage.getItem(`encryption_keys_${address}`)
+              if (storedKeys) {
+                const keys = JSON.parse(storedKeys)
+                setKeyPair(keys)
+                // Ensure public key is in database
+                await savePublicKeyToDatabase(user.id, keys.publicKey)
+                console.log('✅ Encryption keys restored and public key ensured in database')
+              }
+            } catch (keyError) {
+              console.error('Error initializing keys on auto-connect:', keyError)
+              // Don't block auto-connect if key initialization fails
+            }
           }
         }
       } catch (error) {
