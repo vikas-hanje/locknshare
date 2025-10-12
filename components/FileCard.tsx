@@ -5,20 +5,22 @@ import { FileMetadata } from '@/types'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Download, Eye, Trash2, Share2, Lock } from 'lucide-react'
+import { Download, Eye, Trash2, Share2, Lock, Users } from 'lucide-react'
 import { formatBytes, formatDate, getFileExtension } from '@/lib/utils'
 import { motion } from 'framer-motion'
 
 interface FileCardProps {
   file: FileMetadata
+  currentUserId?: string
   onDownload?: (file: FileMetadata) => void
   onView?: (file: FileMetadata) => void
   onDelete?: (file: FileMetadata) => void
   onShare?: (file: FileMetadata) => void
 }
 
-const FileCardComponent = ({ file, onDownload, onView, onDelete, onShare }: FileCardProps) => {
+const FileCardComponent = ({ file, currentUserId, onDownload, onView, onDelete, onShare }: FileCardProps) => {
   const fileExt = getFileExtension(file.file_name)
+  const isSharedWithMe = currentUserId && file.user_id !== currentUserId
 
   return (
     <motion.div
@@ -43,6 +45,12 @@ const FileCardComponent = ({ file, onDownload, onView, onDelete, onShare }: File
                 <Badge variant="secondary">{fileExt.toUpperCase()}</Badge>
                 <Badge variant="outline">{formatBytes(file.file_size)}</Badge>
                 <Badge variant="outline">{file.access_count} views</Badge>
+                {isSharedWithMe && (
+                  <Badge variant="default" className="gap-1">
+                    <Users className="h-3 w-3" />
+                    Shared with you
+                  </Badge>
+                )}
               </div>
               {file.description && (
                 <p className="text-sm text-muted-foreground line-clamp-2">

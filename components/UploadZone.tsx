@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { Upload, File, X, Loader2, Lock } from 'lucide-react'
+import { Upload, File, X, Loader2, Lock, Users } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { formatBytes } from '@/lib/utils'
 
 interface UploadZoneProps {
-  onUpload: (file: File, metadata: { description?: string; tags?: string[] }) => Promise<void>
+  onUpload: (file: File, metadata: { description?: string; tags?: string[]; sharedWith?: string[] }) => Promise<void>
   isUploading: boolean
   progress: number
 }
@@ -22,6 +22,8 @@ export function UploadZone({ onUpload, isUploading, progress }: UploadZoneProps)
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [currentTag, setCurrentTag] = useState('')
+  const [sharedWith, setSharedWith] = useState<string[]>([])
+  const [currentUsername, setCurrentUsername] = useState('')
   const [dragActive, setDragActive] = useState(false)
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -61,18 +63,41 @@ export function UploadZone({ onUpload, isUploading, progress }: UploadZoneProps)
     setTags(tags.filter(tag => tag !== tagToRemove))
   }
 
+  const handleAddUsername = () => {
+    let username = currentUsername.trim()
+    
+    // Add @ prefix if not present
+    if (username && !username.startsWith('@')) {
+      username = '@' + username
+    }
+    
+    // Remove @ for checking and storing (we'll display with @)
+    const usernameWithoutAt = username.substring(1)
+    
+    if (usernameWithoutAt && !sharedWith.includes(usernameWithoutAt)) {
+      setSharedWith([...sharedWith, usernameWithoutAt])
+      setCurrentUsername('')
+    }
+  }
+
+  const handleRemoveUsername = (usernameToRemove: string) => {
+    setSharedWith(sharedWith.filter(u => u !== usernameToRemove))
+  }
+
   const handleUpload = async () => {
     if (!selectedFile) return
 
     await onUpload(selectedFile, {
       description: description.trim() || undefined,
       tags: tags.length > 0 ? tags : undefined,
+      sharedWith: sharedWith.length > 0 ? sharedWith : undefined,
     })
 
     // Reset form
     setSelectedFile(null)
     setDescription('')
     setTags([])
+    setSharedWith([])
   }
 
   return (
@@ -172,6 +197,39 @@ export function UploadZone({ onUpload, isUploading, progress }: UploadZoneProps)
                       ))}
                     </div>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="shared">Share with (optional)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="shared"
+                      placeholder="@username"
+                      value={currentUsername}
+                      onChange={(e) => setCurrentUsername(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddUsername())}
+                    />
+                    <Button type="button" onClick={handleAddUsername} variant="outline">
+                      <Users className="h-4 w-4 mr-2" />
+                      Add
+                    </Button>
+                  </div>
+                  {sharedWith.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {sharedWith.map(username => (
+                        <Badge key={username} variant="outline" className="gap-1">
+                          @{username}
+                          <X
+                            className="h-3 w-3 cursor-pointer"
+                            onClick={() => handleRemoveUsername(username)}
+                          />
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Only users with these usernames can access this file
+                  </p>
                 </div>
 
                 {isUploading && (

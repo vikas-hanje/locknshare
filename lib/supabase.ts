@@ -138,6 +138,44 @@ export async function getUserFiles(userId: string): Promise<FileMetadata[]> {
   }
 }
 
+// Get files accessible to user (owned + shared with them)
+export async function getAccessibleFiles(userId: string, username?: string): Promise<FileMetadata[]> {
+  try {
+    // Get files owned by user
+    const { data: ownedFiles, error: ownedError } = await supabase
+      .from('file_metadata')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (ownedError) throw ownedError
+
+    // If user has a username, get files shared with them
+    if (username) {
+      const { data: sharedFiles, error: sharedError } = await supabase
+        .from('file_metadata')
+        .select('*')
+        .contains('shared_with', [username])
+        .neq('user_id', userId) // Don't include files they already own
+        .order('created_at', { ascending: false })
+
+      if (sharedError) {
+        console.error('Error fetching shared files:', sharedError)
+        // Continue with just owned files
+        return ownedFiles || []
+      }
+
+      // Combine owned and shared files
+      return [...(ownedFiles || []), ...(sharedFiles || [])]
+    }
+
+    return ownedFiles || []
+  } catch (error) {
+    console.error('Error fetching accessible files:', error)
+    return []
+  }
+}
+
 export async function getFileById(fileId: string): Promise<FileMetadata | null> {
   try {
     const { data, error } = await supabase

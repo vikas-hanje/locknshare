@@ -9,12 +9,18 @@ import { ConnectWallet } from '@/components/ConnectWallet'
 import { SearchBar } from '@/components/SearchBar'
 import { FileCard } from '@/components/FileCard'
 import { useStore } from '@/store/useStore'
+import { useEncryption } from '@/hooks/useEncryption'
 import { FileMetadata } from '@/types'
 import { generateEmbeddings, cosineSimilarity } from '@/lib/embeddingClient'
+import { updateFileAccessCount } from '@/lib/supabase'
+import { getFromIPFS } from '@/lib/pinata'
+import { downloadFile } from '@/lib/utils'
+import toast from 'react-hot-toast'
 
 export default function SearchPage() {
   const router = useRouter()
-  const { isConnected, files } = useStore()
+  const { isConnected, user, files, keyPair } = useStore()
+  const { decrypt } = useEncryption()
   const [results, setResults] = useState<FileMetadata[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
@@ -24,6 +30,51 @@ export default function SearchPage() {
       router.push('/')
     }
   }, [isConnected, router])
+
+  const handleDownload = async (file: FileMetadata) => {
+    if (!keyPair) {
+      toast.error('Encryption keys not found. Please reconnect your wallet.')
+      return
+    }
+
+    try {
+      toast.loading('Downloading and decrypting...', { id: 'download' })
+
+      // Download from IPFS
+      const encryptedBlob = await getFromIPFS(file.ipfs_hash)
+      const encryptedData = await encryptedBlob.text()
+
+      // Verify encryption metadata exists
+      if (!file.encrypted_key || !file.iv) {
+        throw new Error('Missing encryption metadata')
+      }
+
+      // Prepare encryption data for decryption
+      const encryptionResult = {
+        encryptedData: encryptedData,
+        encryptedKey: file.encrypted_key,
+        iv: file.iv,
+      }
+
+      // Decrypt
+      const decryptedData = await decrypt(encryptionResult, keyPair.privateKey)
+      if (!decryptedData) {
+        throw new Error('Decryption failed')
+      }
+
+      // Download
+      const blob = new Blob([decryptedData], { type: file.file_type })
+      downloadFile(blob, file.file_name)
+
+      // Update access count
+      await updateFileAccessCount(file.id)
+
+      toast.success('File downloaded successfully', { id: 'download' })
+    } catch (error: any) {
+      console.error('Download error:', error)
+      toast.error(error.message || 'Download failed', { id: 'download' })
+    }
+  }
 
   const handleSearch = async (query: string) => {
     setIsSearching(true)
@@ -110,7 +161,13 @@ export default function SearchPage() {
             ) : results.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {results.map(file => (
-                  <FileCard key={file.id} file={file} />
+                  <FileCard 
+                    key={file.id} 
+                    file={file}
+                    currentUserId={user?.id}
+                    onView={handleDownload}
+                    onDownload={handleDownload}
+                  />
                 ))}
               </div>
             ) : (

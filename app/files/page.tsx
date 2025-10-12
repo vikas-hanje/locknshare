@@ -12,7 +12,7 @@ import { FileCard } from '@/components/FileCard'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useStore } from '@/store/useStore'
 import { useEncryption } from '@/hooks/useEncryption'
-import { getUserFiles, deleteFile, updateFileAccessCount } from '@/lib/supabase'
+import { getUserFiles, getAccessibleFiles, deleteFile, updateFileAccessCount } from '@/lib/supabase'
 import { getFromIPFS, unpinFromIPFS } from '@/lib/pinata'
 import { downloadFile } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -50,8 +50,20 @@ export default function FilesPage() {
 
       setIsLoading(true)
       try {
-        const userFiles = await getUserFiles(user.id)
-        setFiles(userFiles)
+        // Get files owned by user + files shared with them
+        const accessibleFiles = await getAccessibleFiles(user.id, user.username)
+        
+        setFiles(accessibleFiles)
+        
+        // Count shared files
+        const ownedCount = accessibleFiles.filter(f => f.user_id === user.id).length
+        const sharedCount = accessibleFiles.length - ownedCount
+        
+        if (sharedCount > 0) {
+          toast.success(`Loaded ${accessibleFiles.length} files (${sharedCount} shared with you)`, {
+            duration: 3000
+          })
+        }
       } catch (error) {
         console.error('Error fetching files:', error)
         toast.error('Failed to load files')
@@ -230,6 +242,7 @@ export default function FilesPage() {
                   <FileCard
                     key={file.id}
                     file={file}
+                    currentUserId={user?.id}
                     onView={handleDownload}
                     onDownload={handleDownload}
                     onDelete={handleDelete}

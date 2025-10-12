@@ -8,6 +8,10 @@ const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT || ''
 const PINATA_BASE_URL = 'https://api.pinata.cloud'
 const GATEWAY_URL = 'https://gateway.pinata.cloud/ipfs'
 
+// For profile images, use your dedicated gateway with better CORS support
+export const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY 
+  || 'https://copper-impressed-booby-853.mypinata.cloud/ipfs'  // Default Pinata dedicated gateway
+
 /**
  * Upload file to IPFS via Pinata
  */

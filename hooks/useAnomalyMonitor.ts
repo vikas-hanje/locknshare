@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AnomalyRecord } from '@/types'
-import { getUserAnomalies, createAccessLog } from '@/lib/supabase'
-import { detectAnomalies, getAnomalyInsights } from '@/lib/ai-services'
+import { getUserAnomalies, logActivity as logActivityToDb } from '@/lib/anomalyDetection'
+import { AnomalyDetector } from '@/lib/anomalyDetection'
 import { useStore } from '@/store/useStore'
 
 export function useAnomalyMonitor() {
   const [anomalies, setAnomalies] = useState<AnomalyRecord[]>([])
-  const [trustScore, setTrustScore] = useState(0)
+  const [trustScore, setTrustScore] = useState(100)
   const [securityStatus, setSecurityStatus] = useState<'safe' | 'warning' | 'alert'>('safe')
   const [isLoading, setIsLoading] = useState(false)
   
@@ -20,6 +20,9 @@ export function useAnomalyMonitor() {
     try {
       const data = await getUserAnomalies(user.id)
       setAnomalies(data)
+      
+      // Calculate security status based on anomalies
+      updateSecurityStatus(data)
     } catch (error) {
       console.error('Error fetching anomalies:', error)
     } finally {
@@ -27,47 +30,64 @@ export function useAnomalyMonitor() {
     }
   }, [user])
 
-  // Fetch anomaly insights
-  const fetchInsights = useCallback(async () => {
-    if (!user) return
-
-    try {
-      const insights = await getAnomalyInsights(user.id)
-      setTrustScore(insights.trust_score)
-      setSecurityStatus(insights.status)
-    } catch (error) {
-      console.error('Error fetching insights:', error)
+  // Update security status based on anomalies
+  const updateSecurityStatus = (anomalyList: AnomalyRecord[]) => {
+    const unresolved = anomalyList.filter(a => !a.resolved)
+    
+    if (unresolved.length === 0) {
+      setSecurityStatus('safe')
+      setTrustScore(100)
+      return
     }
-  }, [user])
+
+    // Check severity
+    const hasCritical = unresolved.some(a => a.severity === 'critical')
+    const hasHigh = unresolved.some(a => a.severity === 'high')
+    const hasMedium = unresolved.some(a => a.severity === 'medium')
+
+    if (hasCritical || unresolved.length > 5) {
+      setSecurityStatus('alert')
+      setTrustScore(Math.max(0, 100 - unresolved.length * 20))
+    } else if (hasHigh || unresolved.length > 2) {
+      setSecurityStatus('warning')
+      setTrustScore(Math.max(40, 100 - unresolved.length * 10))
+    } else {
+      setSecurityStatus('safe')
+      setTrustScore(Math.max(70, 100 - unresolved.length * 5))
+    }
+  }
 
   // Log activity and check for anomalies
   const logActivity = useCallback(
-    async (activityType: 'upload' | 'download' | 'view' | 'share', fileId?: string) => {
+    async (
+      activityType: 'upload' | 'download' | 'view' | 'share' | 'delete',
+      metadata?: {
+        fileId?: string
+        fileName?: string
+        success?: boolean
+      }
+    ) => {
       if (!user) return
 
       try {
-        // Get user's IP (in production, do this server-side)
-        let ipAddress = 'Unknown'
-        try {
-          const response = await fetch('https://api.ipify.org?format=json')
-          const data = await response.json()
-          ipAddress = data.ip
-        } catch (error) {
-          console.error('Error fetching IP:', error)
-        }
+        // Log the activity
+        await logActivityToDb(user.id, activityType, metadata)
 
-        // Create access log
-        await createAccessLog({
-          user_id: user.id,
-          file_id: fileId,
-          access_type: activityType,
-          ip_address: ipAddress,
-          timestamp: new Date().toISOString(),
-          success: true,
-        })
-
-        // Refresh anomalies
-        await fetchAnomalies()
+        // Run anomaly detection (in background)
+        setTimeout(async () => {
+          try {
+            const apiKey = process.env.NEXT_PUBLIC_HUGGINGFACE_API_KEY
+            if (apiKey) {
+              const detector = new AnomalyDetector(apiKey)
+              await detector.analyzeActivity(user.id)
+              
+              // Refresh anomalies after detection
+              await fetchAnomalies()
+            }
+          } catch (error) {
+            console.error('Error running anomaly detection:', error)
+          }
+        }, 1000) // Delay 1 second to not block UI
       } catch (error) {
         console.error('Error logging activity:', error)
       }
@@ -75,21 +95,41 @@ export function useAnomalyMonitor() {
     [user, fetchAnomalies]
   )
 
+  // Run anomaly detection manually
+  const runDetection = useCallback(async () => {
+    if (!user) return
+
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_HUGGINGFACE_API_KEY
+      if (!apiKey) {
+        console.error('HuggingFace API key not found')
+        return
+      }
+
+      console.log('🔍 Running anomaly detection...')
+      const detector = new AnomalyDetector(apiKey)
+      await detector.analyzeActivity(user.id)
+      
+      // Refresh anomalies
+      await fetchAnomalies()
+    } catch (error) {
+      console.error('Error running anomaly detection:', error)
+    }
+  }, [user, fetchAnomalies])
+
   // Initial fetch
   useEffect(() => {
     if (user) {
       fetchAnomalies()
-      fetchInsights()
 
       // Refresh every 5 minutes
       const interval = setInterval(() => {
         fetchAnomalies()
-        fetchInsights()
       }, 5 * 60 * 1000)
 
       return () => clearInterval(interval)
     }
-  }, [user, fetchAnomalies, fetchInsights])
+  }, [user, fetchAnomalies])
 
   return {
     anomalies,
@@ -98,5 +138,6 @@ export function useAnomalyMonitor() {
     isLoading,
     fetchAnomalies,
     logActivity,
+    runDetection,
   }
 }

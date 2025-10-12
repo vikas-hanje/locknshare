@@ -46,7 +46,7 @@ export default function UploadPage() {
 
   const handleUpload = async (
     file: File,
-    metadata: { description?: string; tags?: string[] }
+    metadata: { description?: string; tags?: string[]; sharedWith?: string[] }
   ) => {
     if (!user || !keyPair) {
       toast.error('Please connect your wallet first')
@@ -125,7 +125,7 @@ export default function UploadPage() {
       
       setTotalProgress(85)
 
-      // Save metadata to Supabase (including encryption data)
+      // Save metadata to Supabase (including encryption data and shared users)
       const fileMetadata = await saveFileMetadata({
         user_id: user.id,
         file_name: file.name,
@@ -138,6 +138,7 @@ export default function UploadPage() {
         iv: encryptedResult.iv,
         description: metadata.description,
         tags: metadata.tags,
+        shared_with: metadata.sharedWith,
         embedding_vector: embedding.length > 0 ? embedding : undefined,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -153,8 +154,12 @@ export default function UploadPage() {
       // Add to store
       addFile(fileMetadata)
 
-      // Log activity
-      await logActivity('upload', fileMetadata.id)
+      // Log activity and run anomaly detection
+      await logActivity('upload', {
+        fileId: fileMetadata.id,
+        fileName: file.name,
+        success: true,
+      })
 
       toast.success('File uploaded successfully!')
       

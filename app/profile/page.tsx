@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sidebar } from '@/components/Sidebar'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { ConnectWallet } from '@/components/ConnectWallet'
+import { ImageCropper } from '@/components/ImageCropper'
 import { useStore } from '@/store/useStore'
 import { updateUserUsername, updateUserProfileImage } from '@/lib/supabase'
 import { truncateAddress } from '@/lib/utils'
@@ -22,6 +23,8 @@ export default function ProfilePage() {
   const [isEditingUsername, setIsEditingUsername] = useState(false)
   const [username, setUsername] = useState(user?.username || '')
   const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [showImageInstructions, setShowImageInstructions] = useState(false)
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { upload } = usePinataUpload()
 
@@ -60,9 +63,9 @@ export default function ProfilePage() {
     setIsEditingUsername(false)
   }
 
-  const handleProfileImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (!file || !user) return
+    if (!file) return
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -76,12 +79,29 @@ export default function ProfilePage() {
       return
     }
 
+    // Read file and open cropper
+    const reader = new FileReader()
+    reader.onload = () => {
+      setImageToCrop(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    if (!user) return
+
     setIsUploadingImage(true)
+    setImageToCrop(null)
     toast.loading('Uploading profile image...', { id: 'profile-image' })
 
     try {
+      // Convert blob to File
+      const croppedFile = new File([croppedImageBlob], `profile-${user.id}-${Date.now()}.jpg`, {
+        type: 'image/jpeg',
+      })
+
       // Upload to IPFS via Pinata
-      const ipfsResponse = await upload(file, `profile-${user.id}-${Date.now()}`, {
+      const ipfsResponse = await upload(croppedFile, `profile-${user.id}-${Date.now()}`, {
         type: 'profile-image',
         userId: user.id,
       })
@@ -90,8 +110,10 @@ export default function ProfilePage() {
         throw new Error('Failed to upload image to IPFS')
       }
 
-      // Create IPFS URL
-      const imageUrl = `https://gateway.pinata.cloud/ipfs/${ipfsResponse.IpfsHash}`
+      // Create IPFS URL using ipfs.io for better CORS support
+      const imageUrl = `https://ipfs.io/ipfs/${ipfsResponse.IpfsHash}`
+      
+      console.log('Profile image uploaded to IPFS:', imageUrl)
 
       // Update user profile in database
       const updatedUser = await updateUserProfileImage(user.id, imageUrl)
@@ -111,6 +133,13 @@ export default function ProfilePage() {
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
+    }
+  }
+
+  const handleCropCancel = () => {
+    setImageToCrop(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -151,7 +180,10 @@ export default function ProfilePage() {
                     )}
                   </Avatar>
                   <button
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      setShowImageInstructions(true)
+                      fileInputRef.current?.click()
+                    }}
                     disabled={isUploadingImage}
                     className="absolute bottom-0 right-0 p-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                     title="Upload profile image"
@@ -162,18 +194,22 @@ export default function ProfilePage() {
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
-                    onChange={handleProfileImageUpload}
+                    onChange={handleFileSelect}
                     className="hidden"
                   />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-medium mb-1">{user?.username || 'Set your username'}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Click the camera icon to upload a profile picture
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Max size: 5MB • Formats: JPG, PNG, GIF
-                  </p>
+                  {showImageInstructions && (
+                    <>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Click the camera icon to upload a profile picture
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Max size: 5MB • Formats: JPG, PNG, GIF
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
               
@@ -240,6 +276,16 @@ export default function ProfilePage() {
           </Card>
         </main>
       </div>
+
+      {/* Image Cropper Modal */}
+      {imageToCrop && (
+        <ImageCropper
+          imageSrc={imageToCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+          aspectRatio={1}
+        />
+      )}
     </div>
   )
 }

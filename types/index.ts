@@ -42,14 +42,15 @@ export interface FileMetadata {
 
 export interface AccessLog {
   id: string;
-  file_id: string;
+  file_id?: string;
   user_id: string;
-  access_type: 'upload' | 'download' | 'view' | 'share';
+  access_type: 'login' | 'upload' | 'download' | 'view' | 'share' | 'delete';
   ip_address?: string;
   geolocation?: string;
   user_agent?: string;
   timestamp: string;
   success: boolean;
+  metadata?: string;
 }
 
 export interface AnomalyRecord {
