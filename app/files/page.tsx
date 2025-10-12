@@ -13,9 +13,10 @@ import { FileEditDialog } from '@/components/FileEditDialog'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useStore } from '@/store/useStore'
 import { useEncryption } from '@/hooks/useEncryption'
-import { getUserFiles, getAccessibleFiles, deleteFile, updateFileAccessCount } from '@/lib/supabase'
+import { getUserFiles, getAccessibleFiles, deleteFile, updateFileAccessCount, updateFileMetadata } from '@/lib/supabase'
 import { getFromIPFS, unpinFromIPFS } from '@/lib/pinata'
 import { downloadFile } from '@/lib/utils'
+import { encryptKeyForUsers } from '@/lib/sharedEncryption'
 import { FileMetadata } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -61,6 +62,39 @@ export default function FilesPage() {
             duration: 3000
           })
         }
+
+        // Auto-backfill missing shared_keys for owned files
+        // This fixes cases where recipients connected later or usernames changed case
+        ;(async () => {
+          try {
+            const ownedFiles = (accessibleFiles || []).filter(f => f.user_id === user.id)
+            for (const file of ownedFiles) {
+              const recipients: string[] = (file.shared_with || [])
+              if (!recipients || recipients.length === 0) continue
+
+              const existingKeys = (file.shared_keys || []) as any[]
+              const missing = recipients.filter(u => !existingKeys.some(k => (k.username || '').toLowerCase() === (u || '').toLowerCase()))
+              if (missing.length === 0) continue
+
+              if (!file.encrypted_key) continue
+
+              console.log(`Backfilling shared keys for ${file.file_name}:`, missing)
+              const newKeys = await encryptKeyForUsers(file.encrypted_key, missing.map(u => (u || '').toLowerCase()))
+              if (newKeys.length > 0) {
+                const merged = [
+                  ...existingKeys.filter(k => recipients.includes(k.username)),
+                  ...newKeys,
+                ]
+                await updateFileMetadata(file.id, { shared_keys: merged } as any)
+                // Update local state optimistically
+                setFiles(prev => prev.map(f => f.id === file.id ? { ...f, shared_keys: merged } : f))
+                console.log(`✅ Backfilled ${newKeys.length} shared key(s) for ${file.file_name}`)
+              }
+            }
+          } catch (bfErr) {
+            console.warn('Auto-backfill shared_keys failed:', bfErr)
+          }
+        })()
       } catch (error) {
         console.error('Error fetching files:', error)
         toast.error('Failed to load files')
