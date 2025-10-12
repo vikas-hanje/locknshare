@@ -9,12 +9,14 @@ import { Sidebar } from '@/components/Sidebar'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { ConnectWallet } from '@/components/ConnectWallet'
 import { FileCard } from '@/components/FileCard'
+import { FileEditDialog } from '@/components/FileEditDialog'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useStore } from '@/store/useStore'
 import { useEncryption } from '@/hooks/useEncryption'
 import { getUserFiles, getAccessibleFiles, deleteFile, updateFileAccessCount } from '@/lib/supabase'
 import { getFromIPFS, unpinFromIPFS } from '@/lib/pinata'
 import { downloadFile } from '@/lib/utils'
+import { FileMetadata } from '@/types'
 import toast from 'react-hot-toast'
 
 export default function FilesPage() {
@@ -24,6 +26,7 @@ export default function FilesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [filterType, setFilterType] = useState<string>('all')
   const [showFilterMenu, setShowFilterMenu] = useState(false)
+  const [editingFile, setEditingFile] = useState<FileMetadata | null>(null)
 
   useEffect(() => {
     if (!isConnected) {
@@ -153,6 +156,15 @@ export default function FilesPage() {
     }
   }
 
+  const handleEdit = (file: FileMetadata) => {
+    setEditingFile(file)
+  }
+
+  const handleUpdate = (fileId: string, updates: Partial<FileMetadata>) => {
+    // Update local state
+    setFiles(files.map(f => f.id === fileId ? { ...f, ...updates } : f))
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -160,7 +172,7 @@ export default function FilesPage() {
       <div className="lg:pl-64">
         {/* Header */}
         <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-          <div className="px-6 py-4 flex items-center justify-between">
+          <div className="pl-16 pr-6 py-4 lg:px-6 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold">My Files</h1>
               <p className="text-sm text-muted-foreground">
@@ -245,6 +257,7 @@ export default function FilesPage() {
                     currentUserId={user?.id}
                     onView={handleDownload}
                     onDownload={handleDownload}
+                    onEdit={handleEdit}
                     onDelete={handleDelete}
                   />
                 ))}
@@ -267,6 +280,16 @@ export default function FilesPage() {
           )}
         </main>
       </div>
+
+      {/* Edit Dialog */}
+      {editingFile && (
+        <FileEditDialog
+          file={editingFile}
+          isOpen={true}
+          onClose={() => setEditingFile(null)}
+          onUpdate={handleUpdate}
+        />
+      )}
     </div>
   )
 }

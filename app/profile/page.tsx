@@ -149,7 +149,7 @@ export default function ProfilePage() {
       
       <div className="lg:pl-64">
         <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-          <div className="px-6 py-4 flex items-center justify-between">
+          <div className="pl-16 pr-6 py-4 lg:px-6 flex items-center justify-between">
             <h1 className="text-2xl font-bold">Profile</h1>
             <div className="flex items-center gap-4">
               <ThemeToggle />

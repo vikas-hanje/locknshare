@@ -47,10 +47,10 @@ const SidebarComponent = () => {
   return (
     <>
       <motion.aside
-        initial={{ x: -300 }}
-        animate={{ x: 0 }}
-        exit={{ x: -300 }}
-        className="fixed left-0 top-0 h-screen w-64 border-r bg-card z-50 flex flex-col"
+        initial={{ opacity: 0.8 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="fixed left-0 top-0 h-screen w-64 border-r bg-card z-50 flex flex-col lg:translate-x-0"
       >
         <div className="p-6 border-b flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -100,8 +100,13 @@ const SidebarComponent = () => {
         </div>
       </motion.aside>
 
+      {/* Mobile overlay */}
       {sidebarOpen && (
-        <div
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />

@@ -6,6 +6,11 @@ import {
   encryptPrivateKey,
   decryptPrivateKey,
 } from '@/lib/encryption'
+import {
+  saveKeysToCloud,
+  retrieveKeysFromCloud,
+  requestWalletSignature,
+} from '@/lib/keyManagement'
 import { RSAKeyPair, EncryptionResult } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -118,11 +123,63 @@ export function useEncryption() {
     []
   )
 
+  // Initialize keys with cloud sync (cross-device support)
+  const initializeKeys = useCallback(
+    async (userId: string, walletAddress: string): Promise<RSAKeyPair | null> => {
+      setIsGenerating(true)
+      try {
+        // 1. Check localStorage first (fastest)
+        const stored = localStorage.getItem(`encryption_keys_${walletAddress}`)
+        if (stored) {
+          const keys = JSON.parse(stored)
+          console.log('✅ Restored keys from localStorage')
+          return keys
+        }
+
+        // 2. Request wallet signature for cloud access
+        toast.loading('Sign message to access your encryption keys...', { id: 'keys' })
+        const signature = await requestWalletSignature(walletAddress)
+
+        // 3. Try to retrieve from cloud
+        const cloudKeys = await retrieveKeysFromCloud(userId, signature)
+        if (cloudKeys) {
+          // Save to localStorage for faster access next time
+          localStorage.setItem(`encryption_keys_${walletAddress}`, JSON.stringify(cloudKeys))
+          toast.success('Keys retrieved from cloud', { id: 'keys' })
+          return cloudKeys
+        }
+
+        // 4. Generate new keys if none found
+        toast.loading('Generating new encryption keys...', { id: 'keys' })
+        const keyPair = await generateRSAKeyPair()
+
+        // 5. Save to both cloud and localStorage
+        localStorage.setItem(`encryption_keys_${walletAddress}`, JSON.stringify(keyPair))
+        await saveKeysToCloud(userId, walletAddress, keyPair, signature)
+        
+        toast.success('Encryption keys generated and saved', { id: 'keys' })
+        return keyPair
+      } catch (error: any) {
+        console.error('Error initializing keys:', error)
+        if (error.message?.includes('User rejected')) {
+          toast.error('Signature required to access encryption keys', { id: 'keys' })
+        } else {
+          toast.error('Failed to initialize encryption keys', { id: 'keys' })
+        }
+        return null
+      } finally {
+        setIsGenerating(false)
+      }
+    },
+    []
+  )
+
   return {
     isGenerating,
     isEncrypting,
     isDecrypting,
     generateKeys,
+    initializeKeys,
     encrypt,
     decrypt,
     securePrivateKey,

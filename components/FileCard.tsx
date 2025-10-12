@@ -5,7 +5,7 @@ import { FileMetadata } from '@/types'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Download, Eye, Trash2, Share2, Lock, Users } from 'lucide-react'
+import { Download, Eye, Trash2, Share2, Lock, Users, Edit } from 'lucide-react'
 import { formatBytes, formatDate, getFileExtension } from '@/lib/utils'
 import { motion } from 'framer-motion'
 
@@ -16,11 +16,13 @@ interface FileCardProps {
   onView?: (file: FileMetadata) => void
   onDelete?: (file: FileMetadata) => void
   onShare?: (file: FileMetadata) => void
+  onEdit?: (file: FileMetadata) => void
 }
 
-const FileCardComponent = ({ file, currentUserId, onDownload, onView, onDelete, onShare }: FileCardProps) => {
+const FileCardComponent = ({ file, currentUserId, onDownload, onView, onDelete, onShare, onEdit }: FileCardProps) => {
   const fileExt = getFileExtension(file.file_name)
   const isSharedWithMe = currentUserId && file.user_id !== currentUserId
+  const isOwner = currentUserId === file.user_id
 
   return (
     <motion.div
@@ -96,6 +98,16 @@ const FileCardComponent = ({ file, currentUserId, onDownload, onView, onDelete, 
               Download
             </Button>
           )}
+          {onEdit && isOwner && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(file)}
+              title="Edit tags and sharing"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          )}
           {onShare && (
             <Button
               variant="ghost"
@@ -105,7 +117,7 @@ const FileCardComponent = ({ file, currentUserId, onDownload, onView, onDelete, 
               <Share2 className="h-4 w-4" />
             </Button>
           )}
-          {onDelete && (
+          {onDelete && isOwner && (
             <Button
               variant="ghost"
               size="sm"

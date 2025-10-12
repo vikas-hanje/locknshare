@@ -152,10 +152,11 @@ export async function getAccessibleFiles(userId: string, username?: string): Pro
 
     // If user has a username, get files shared with them
     if (username) {
+      // Use Postgres array operator to check if username is in shared_with array
       const { data: sharedFiles, error: sharedError } = await supabase
         .from('file_metadata')
         .select('*')
-        .contains('shared_with', [username])
+        .filter('shared_with', 'cs', `{${username}}`) // cs = contains, uses Postgres array syntax
         .neq('user_id', userId) // Don't include files they already own
         .order('created_at', { ascending: false })
 
@@ -164,6 +165,8 @@ export async function getAccessibleFiles(userId: string, username?: string): Pro
         // Continue with just owned files
         return ownedFiles || []
       }
+
+      console.log(`✅ Found ${sharedFiles?.length || 0} files shared with @${username}`)
 
       // Combine owned and shared files
       return [...(ownedFiles || []), ...(sharedFiles || [])]
@@ -222,6 +225,27 @@ export async function deleteFile(fileId: string): Promise<boolean> {
     return true
   } catch (error) {
     console.error('Error deleting file:', error)
+    return false
+  }
+}
+
+export async function updateFileMetadata(
+  fileId: string,
+  updates: Partial<FileMetadata>
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('file_metadata')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', fileId)
+
+    if (error) throw error
+    return true
+  } catch (error) {
+    console.error('Error updating file metadata:', error)
     return false
   }
 }

@@ -25,7 +25,7 @@ export default function SecurityPage() {
       
       <div className="lg:pl-64">
         <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-          <div className="px-6 py-4 flex items-center justify-between">
+          <div className="pl-16 pr-6 py-4 lg:px-6 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold flex items-center gap-2">
                 <Shield className="h-6 w-6" />

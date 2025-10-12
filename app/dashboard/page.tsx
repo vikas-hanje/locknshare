@@ -86,7 +86,7 @@ export default function DashboardPage() {
       <div className="lg:pl-64">
         {/* Header */}
         <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-          <div className="px-6 py-4 flex items-center justify-between">
+          <div className="pl-16 pr-6 py-4 lg:px-6 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold">Dashboard</h1>
               <p className="text-sm text-muted-foreground">
