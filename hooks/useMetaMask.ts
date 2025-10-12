@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { BrowserProvider, JsonRpcSigner } from 'ethers'
 import { useStore } from '@/store/useStore'
 import { createOrUpdateUser, getUserByWallet, updateUserLastLogin } from '@/lib/supabase'
+import { savePublicKeyToDatabase } from '@/lib/sharedEncryption'
+import { useEncryption } from './useEncryption'
 import toast from 'react-hot-toast'
 
 declare global {
@@ -20,8 +22,11 @@ export function useMetaMask() {
     setWalletAddress,
     setEnsName,
     setIsConnected,
+    setKeyPair,
     logout: storeLogout,
   } = useStore()
+  
+  const { initializeKeys } = useEncryption()
 
   // Check if MetaMask is installed
   const isMetaMaskInstalled = useCallback(() => {
@@ -93,6 +98,21 @@ export function useMetaMask() {
         setWalletAddress(address)
         setEnsName(ensName)
         setIsConnected(true)
+        
+        // Initialize encryption keys with cloud sync
+        try {
+          const keys = await initializeKeys(user.id, address)
+          if (keys) {
+            setKeyPair(keys)
+            // Save public key to database for file sharing
+            await savePublicKeyToDatabase(user.id, keys.publicKey)
+            console.log('✅ Encryption keys initialized and public key saved')
+          }
+        } catch (keyError) {
+          console.error('Error initializing keys:', keyError)
+          // Don't block login if key initialization fails
+        }
+        
         toast.success(`Connected to ${ensName || address.slice(0, 6)}...${address.slice(-4)}`)
       }
     } catch (error: any) {

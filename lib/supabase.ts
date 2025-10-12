@@ -152,21 +152,26 @@ export async function getAccessibleFiles(userId: string, username?: string): Pro
 
     // If user has a username, get files shared with them
     if (username) {
-      // Use Postgres array operator to check if username is in shared_with array
-      const { data: sharedFiles, error: sharedError } = await supabase
+      // Use overlaps operator to check if username is in shared_with array
+      // This is more reliable than 'cs' for text[] columns
+      const { data: sharedFiles, error: sharedError} = await supabase
         .from('file_metadata')
         .select('*')
-        .filter('shared_with', 'cs', `{${username}}`) // cs = contains, uses Postgres array syntax
+        .overlaps('shared_with', [username]) // overlaps operator for array matching
         .neq('user_id', userId) // Don't include files they already own
         .order('created_at', { ascending: false })
 
       if (sharedError) {
         console.error('Error fetching shared files:', sharedError)
+        console.error('Query details:', { username, userId })
         // Continue with just owned files
         return ownedFiles || []
       }
 
       console.log(`✅ Found ${sharedFiles?.length || 0} files shared with @${username}`)
+      if (sharedFiles && sharedFiles.length > 0) {
+        console.log('Shared files:', sharedFiles.map(f => ({ name: f.file_name, shared_with: f.shared_with })))
+      }
 
       // Combine owned and shared files
       return [...(ownedFiles || []), ...(sharedFiles || [])]

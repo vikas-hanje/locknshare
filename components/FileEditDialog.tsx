@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { X, Users, Tag } from 'lucide-react'
 import { updateFileMetadata } from '@/lib/supabase'
+import { encryptKeyForUsers } from '@/lib/sharedEncryption'
 import toast from 'react-hot-toast'
 
 interface FileEditDialogProps {
@@ -61,10 +62,33 @@ export function FileEditDialog({ file, isOpen, onClose, onUpdate }: FileEditDial
   const handleSave = async () => {
     setIsSaving(true)
     try {
+      // Check if shared users changed
+      const originalShared = file.shared_with || []
+      const newUsers = sharedWith.filter(u => !originalShared.includes(u))
+      
+      let updatedSharedKeys = file.shared_keys || []
+      
+      // If new users were added, encrypt the file key for them
+      if (newUsers.length > 0 && file.encrypted_key) {
+        toast.loading('Encrypting keys for new users...', { id: 'encrypt' })
+        const newKeys = await encryptKeyForUsers(file.encrypted_key, newUsers)
+        
+        // Merge with existing shared keys
+        updatedSharedKeys = [
+          ...updatedSharedKeys.filter((k: any) => sharedWith.includes(k.username)),
+          ...newKeys
+        ]
+        toast.success(`Encrypted keys for ${newKeys.length} new users`, { id: 'encrypt' })
+      } else if (sharedWith.length < originalShared.length) {
+        // Users were removed - filter out their keys
+        updatedSharedKeys = updatedSharedKeys.filter((k: any) => sharedWith.includes(k.username))
+      }
+
       // Update in database
       const success = await updateFileMetadata(file.id, {
         tags: tags.length > 0 ? tags : undefined,
         shared_with: sharedWith.length > 0 ? sharedWith : undefined,
+        shared_keys: updatedSharedKeys.length > 0 ? updatedSharedKeys : undefined,
       })
 
       if (success) {
@@ -72,6 +96,7 @@ export function FileEditDialog({ file, isOpen, onClose, onUpdate }: FileEditDial
         onUpdate(file.id, {
           tags,
           shared_with: sharedWith,
+          shared_keys: updatedSharedKeys,
         })
         toast.success('File updated successfully')
         onClose()

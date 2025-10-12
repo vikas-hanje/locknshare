@@ -37,6 +37,7 @@ export interface FileMetadata {
   updated_at: string;
   access_count: number;
   shared_with?: string[];
+  shared_keys?: Array<{ username: string; encrypted_aes_key: string }>;
   embedding_vector?: number[];
 }
 

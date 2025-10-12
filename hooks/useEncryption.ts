@@ -84,7 +84,7 @@ export function useEncryption() {
         return decrypted
       } catch (error) {
         console.error('Error decrypting file:', error)
-        toast.error('Failed to decrypt file')
+        // Don't show toast here - let caller handle it
         return null
       } finally {
         setIsDecrypting(false)

@@ -16,6 +16,7 @@ import { useEncryption } from '@/hooks/useEncryption'
 import { usePinataUpload } from '@/hooks/usePinataUpload'
 import { useAnomalyMonitor } from '@/hooks/useAnomalyMonitor'
 import { saveFileMetadata } from '@/lib/supabase'
+import { encryptKeyForUsers } from '@/lib/sharedEncryption'
 import { extractTextFromFile, tokenizeText, prepareTextForEmbedding } from '@/lib/documentProcessor'
 import { generateEmbeddings } from '@/lib/embeddingClient'
 import toast from 'react-hot-toast'
@@ -125,6 +126,19 @@ export default function UploadPage() {
       
       setTotalProgress(85)
 
+      // If file is shared, encrypt AES key for each recipient
+      let sharedKeys: any[] = []
+      if (metadata.sharedWith && metadata.sharedWith.length > 0) {
+        console.log(`Encrypting file key for ${metadata.sharedWith.length} recipients...`)
+        sharedKeys = await encryptKeyForUsers(
+          encryptedResult.encryptedKey,
+          metadata.sharedWith
+        )
+        console.log(`✅ Encrypted keys for ${sharedKeys.length} recipients`)
+      }
+
+      setTotalProgress(90)
+
       // Save metadata to Supabase (including encryption data and shared users)
       const fileMetadata = await saveFileMetadata({
         user_id: user.id,
@@ -139,6 +153,7 @@ export default function UploadPage() {
         description: metadata.description,
         tags: metadata.tags,
         shared_with: metadata.sharedWith,
+        shared_keys: sharedKeys.length > 0 ? sharedKeys : undefined,
         embedding_vector: embedding.length > 0 ? embedding : undefined,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

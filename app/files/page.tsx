@@ -97,17 +97,35 @@ export default function FilesPage() {
         throw new Error('Missing encryption metadata')
       }
 
+      // Determine which encrypted key to use
+      let encryptedKeyToUse = file.encrypted_key
+      const isSharedFile = file.user_id !== user?.id
+      
+      if (isSharedFile && file.shared_keys && user?.username) {
+        // This is a shared file - find the key encrypted for this user
+        const sharedKey = file.shared_keys.find((k: any) => k.username === user.username)
+        if (sharedKey) {
+          encryptedKeyToUse = sharedKey.encrypted_aes_key
+          console.log(`✅ Using shared key for @${user.username}`)
+        } else {
+          throw new Error(`No encryption key found for @${user.username}. File owner needs to re-share.`)
+        }
+      }
+
       // Prepare encryption data for decryption
       const encryptionResult = {
         encryptedData: encryptedData,
-        encryptedKey: file.encrypted_key,
+        encryptedKey: encryptedKeyToUse,
         iv: file.iv,
       }
 
       // Decrypt
       const decryptedData = await decrypt(encryptionResult, keyPair.privateKey)
       if (!decryptedData) {
-        throw new Error('Decryption failed')
+        if (isSharedFile) {
+          throw new Error('Decryption failed - your encryption key may have changed')
+        }
+        throw new Error('Decryption failed - wrong encryption key')
       }
 
       // Download
