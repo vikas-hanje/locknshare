@@ -100,7 +100,7 @@ export function useMetaMask() {
         setEnsName(ensName)
         setIsConnected(true)
         
-        // Initialize encryption keys with cloud sync
+        // Initialize encryption keys with cross-device sync
         try {
           const keys = await initializeKeys(user.id, address)
           if (keys) {
@@ -108,9 +108,14 @@ export function useMetaMask() {
             // Save public key to database for file sharing
             await savePublicKeyToDatabase(user.id, keys.publicKey)
             console.log('✅ Encryption keys initialized and public key saved')
+            console.log('🔑 Public Key:', keys.publicKey.substring(0, 50) + '...')
+          } else {
+            console.error('❌ Failed to initialize encryption keys')
+            toast.error('Failed to initialize encryption keys. Please reconnect.')
           }
         } catch (keyError) {
           console.error('Error initializing keys:', keyError)
+          toast.error('Error initializing encryption keys')
           // Don't block login if key initialization fails
         }
         
@@ -224,18 +229,13 @@ export function useMetaMask() {
                 await savePublicKeyToDatabase(user.id, keys.publicKey)
                 console.log('✅ Encryption keys restored and public key ensured in database')
               } else {
-                // Keys not in localStorage - try to initialize from cloud
-                // This will prompt for signature if needed
-                const keys = await initializeKeys(user.id, address)
-                if (keys) {
-                  setKeyPair(keys)
-                  console.log('✅ Cross-device keys synced from cloud')
-                }
+                // Keys not in localStorage - silently skip on auto-connect
+                // User will need to manually connect to trigger key sync
+                console.warn('⚠️ No keys in localStorage - please reconnect to sync from cloud')
               }
             } catch (keyError) {
               console.error('Error initializing keys on auto-connect:', keyError)
               // Don't block auto-connect if key initialization fails
-              console.warn('⚠️ You may need to reconnect for cross-device key sync')
             }
           }
         }

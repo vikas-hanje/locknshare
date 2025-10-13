@@ -11,6 +11,7 @@ import { ConnectWallet } from '@/components/ConnectWallet'
 import { FileCard } from '@/components/FileCard'
 import { FileEditDialog } from '@/components/FileEditDialog'
 import { FilePreview } from '@/components/FilePreview'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useStore } from '@/store/useStore'
 import { useEncryption } from '@/hooks/useEncryption'
@@ -31,6 +32,7 @@ export default function FilesPage() {
   const [editingFile, setEditingFile] = useState<FileMetadata | null>(null)
   const [previewFile, setPreviewFile] = useState<FileMetadata | null>(null)
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ file: any, isShared: boolean } | null>(null)
 
   useEffect(() => {
     if (!isConnected) {
@@ -203,12 +205,16 @@ export default function FilesPage() {
     const isOwner = file.user_id === user?.id
     const isShared = !isOwner
     
+    // Show confirm dialog
+    setDeleteConfirm({ file, isShared })
+  }
+
+  const executeDelete = async () => {
+    if (!deleteConfirm) return
+    const { file, isShared } = deleteConfirm
+    
     if (isShared) {
       // For shared files, just remove access for this user
-      if (!confirm(`Remove "${file.file_name}" from your shared files? This will not delete the file for the owner or other recipients.`)) {
-        return
-      }
-
       try {
         toast.loading('Removing shared file...', { id: 'delete' })
         
@@ -239,10 +245,6 @@ export default function FilesPage() {
       }
     } else {
       // For owned files, delete completely
-      if (!confirm(`Are you sure you want to delete "${file.file_name}"? This will permanently remove it from IPFS and for all shared users.`)) {
-        return
-      }
-
       try {
         toast.loading('Deleting file...', { id: 'delete' })
 
@@ -431,6 +433,24 @@ export default function FilesPage() {
           }
         }}
       />
+
+      {/* Confirm Delete Dialog */}
+      {deleteConfirm && (
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => setDeleteConfirm(null)}
+          onConfirm={executeDelete}
+          title={deleteConfirm.isShared ? 'Remove Shared File?' : 'Delete File Permanently?'}
+          description={
+            deleteConfirm.isShared
+              ? `Remove "${deleteConfirm.file.file_name}" from your shared files? This will not delete the file for the owner or other recipients.`
+              : `Are you sure you want to delete "${deleteConfirm.file.file_name}"? This will permanently remove it from IPFS and for all shared users.`
+          }
+          confirmText={deleteConfirm.isShared ? 'Remove' : 'Delete'}
+          cancelText="Cancel"
+          variant="destructive"
+        />
+      )}
     </div>
   )
 }

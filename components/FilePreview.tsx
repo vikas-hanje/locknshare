@@ -72,13 +72,6 @@ export function FilePreview({ file, decryptedBlob, isOpen, onClose, onDownload }
               <Download className="h-4 w-4" />
               Download
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         </div>
 
