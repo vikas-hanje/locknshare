@@ -97,28 +97,35 @@ export async function getFromIPFS(ipfsHash: string): Promise<Blob> {
   try {
     console.log('Fetching from IPFS:', ipfsHash)
     
-    // Try multiple gateways for reliability
+    // Try multiple gateways for reliability with priority order
     const gateways = [
-      `${GATEWAY_URL}/${ipfsHash}`,
-      `https://gateway.pinata.cloud/ipfs/${ipfsHash}`,
-      `https://ipfs.io/ipfs/${ipfsHash}`,
+      { url: `${GATEWAY_URL}/${ipfsHash}`, name: 'Pinata Gateway', timeout: 15000 },
+      { url: `https://gateway.pinata.cloud/ipfs/${ipfsHash}`, name: 'Pinata Public', timeout: 15000 },
+      { url: `https://ipfs.io/ipfs/${ipfsHash}`, name: 'IPFS.io', timeout: 20000 },
+      { url: `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`, name: 'Cloudflare', timeout: 15000 },
     ]
 
     let lastError: any = null
     
-    for (const gateway of gateways) {
+    for (let i = 0; i < gateways.length; i++) {
+      const { url, name, timeout } = gateways[i]
       try {
-        console.log('Trying gateway:', gateway)
-        const response = await axios.get(gateway, {
+        console.log(`[${i + 1}/${gateways.length}] Trying ${name}...`)
+        const response = await axios.get(url, {
           responseType: 'blob',
-          timeout: 30000, // 30 second timeout
+          timeout,
+          headers: {
+            'Accept': '*/*'
+          }
         })
 
-        console.log('Successfully fetched from IPFS')
+        console.log(`✅ Successfully fetched from ${name}`)
         return response.data
-      } catch (err) {
-        console.warn('Gateway failed:', gateway, err)
+      } catch (err: any) {
+        const errorMsg = err.code === 'ECONNABORTED' ? 'timeout' : err.message
+        console.warn(`❌ ${name} failed (${errorMsg})`)
         lastError = err
+        // Don't wait between retries, move to next gateway immediately
         continue
       }
     }

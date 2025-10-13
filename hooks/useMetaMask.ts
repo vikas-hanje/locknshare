@@ -3,6 +3,7 @@ import { BrowserProvider, JsonRpcSigner } from 'ethers'
 import { useStore } from '@/store/useStore'
 import { createOrUpdateUser, getUserByWallet, updateUserLastLogin } from '@/lib/supabase'
 import { savePublicKeyToDatabase } from '@/lib/sharedEncryption'
+import { logActivity } from '@/lib/anomalyDetection'
 import { useEncryption } from './useEncryption'
 import toast from 'react-hot-toast'
 
@@ -113,6 +114,9 @@ export function useMetaMask() {
           // Don't block login if key initialization fails
         }
         
+        // Log login activity for anomaly detection
+        await logActivity(user.id, 'login', { success: true })
+        
         toast.success(`Connected to ${ensName || address.slice(0, 6)}...${address.slice(-4)}`)
       }
     } catch (error: any) {
@@ -124,7 +128,7 @@ export function useMetaMask() {
   }, [isMetaMaskInstalled, setUser, setWalletAddress, setEnsName, setIsConnected])
 
   // Disconnect
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback(async () => {
     setProvider(null)
     setSigner(null)
     setUser(null)
@@ -136,7 +140,7 @@ export function useMetaMask() {
     localStorage.setItem('wallet_disconnected', 'true')
     
     toast.success('Wallet disconnected')
-  }, [setProvider, setSigner, setUser, setWalletAddress, setEnsName, setIsConnected])
+  }, [setUser, setWalletAddress, setEnsName, setIsConnected])
 
   // Listen for account changes
   useEffect(() => {
@@ -219,10 +223,19 @@ export function useMetaMask() {
                 // Ensure public key is in database
                 await savePublicKeyToDatabase(user.id, keys.publicKey)
                 console.log('✅ Encryption keys restored and public key ensured in database')
+              } else {
+                // Keys not in localStorage - try to initialize from cloud
+                // This will prompt for signature if needed
+                const keys = await initializeKeys(user.id, address)
+                if (keys) {
+                  setKeyPair(keys)
+                  console.log('✅ Cross-device keys synced from cloud')
+                }
               }
             } catch (keyError) {
               console.error('Error initializing keys on auto-connect:', keyError)
               // Don't block auto-connect if key initialization fails
+              console.warn('⚠️ You may need to reconnect for cross-device key sync')
             }
           }
         }

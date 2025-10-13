@@ -506,11 +506,8 @@ export async function logActivity(
     const ipAddress = await getUserIp()
     const userAgent = navigator.userAgent
 
-    // Get geolocation (optional, can be slow)
-    let geolocation = null
-    if (activityType === 'login') {
-      geolocation = await getIpGeolocation(ipAddress)
-    }
+    // Get geolocation for all activities to track location changes
+    const geolocation = await getIpGeolocation(ipAddress)
 
     const logEntry = {
       user_id: userId,
@@ -550,17 +547,56 @@ export async function getUserIp(): Promise<string> {
  */
 export async function getIpGeolocation(ipAddress: string): Promise<any> {
   try {
-    // Using ipapi.co (free tier: 1000 requests/day)
-    const response = await fetch(`https://ipapi.co/${ipAddress}/json/`)
-    const data = await response.json()
+    if (!ipAddress || ipAddress === 'unknown') return null
+    
+    // Try multiple geolocation services for reliability
+    const services = [
+      // IP-API (free, unlimited for non-commercial)
+      async () => {
+        const response = await fetch(`http://ip-api.com/json/${ipAddress}`, {
+          headers: { 'Accept': 'application/json' }
+        })
+        if (!response.ok) throw new Error('ip-api failed')
+        const data = await response.json()
+        if (data.status !== 'success') throw new Error(data.message || 'Failed')
+        return {
+          country: data.country,
+          city: data.city,
+          lat: data.lat,
+          lng: data.lon,
+          region: data.regionName,
+        }
+      },
+      // ipapi.co (backup)
+      async () => {
+        const response = await fetch(`https://ipapi.co/${ipAddress}/json/`)
+        if (!response.ok) throw new Error('ipapi.co failed')
+        const data = await response.json()
+        if (data.error) throw new Error(data.reason || 'Failed')
+        return {
+          country: data.country_name,
+          city: data.city,
+          lat: data.latitude,
+          lng: data.longitude,
+          region: data.region,
+        }
+      },
+    ]
 
-    return {
-      country: data.country_name,
-      city: data.city,
-      lat: data.latitude,
-      lng: data.longitude,
-      region: data.region,
+    // Try services in order until one succeeds
+    for (const service of services) {
+      try {
+        const result = await service()
+        console.log('✅ Geolocation fetched:', result.city, result.country)
+        return result
+      } catch (err) {
+        console.warn('Geolocation service failed, trying next...', err)
+        continue
+      }
     }
+    
+    console.warn('All geolocation services failed')
+    return null
   } catch (error) {
     console.error('Geolocation error:', error)
     return null

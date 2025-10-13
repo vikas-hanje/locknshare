@@ -10,6 +10,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { ConnectWallet } from '@/components/ConnectWallet'
 import { FileCard } from '@/components/FileCard'
 import { FileEditDialog } from '@/components/FileEditDialog'
+import { FilePreview } from '@/components/FilePreview'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useStore } from '@/store/useStore'
 import { useEncryption } from '@/hooks/useEncryption'
@@ -28,6 +29,8 @@ export default function FilesPage() {
   const [filterType, setFilterType] = useState<string>('all')
   const [showFilterMenu, setShowFilterMenu] = useState(false)
   const [editingFile, setEditingFile] = useState<FileMetadata | null>(null)
+  const [previewFile, setPreviewFile] = useState<FileMetadata | null>(null)
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
 
   useEffect(() => {
     if (!isConnected) {
@@ -116,7 +119,15 @@ export default function FilesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, user?.id, user?.username]) // Re-run when username becomes available
 
+  const handleView = async (file: any) => {
+    await decryptAndPrepare(file, true)
+  }
+
   const handleDownload = async (file: any) => {
+    await decryptAndPrepare(file, false)
+  }
+
+  const decryptAndPrepare = async (file: any, isPreview: boolean) => {
     if (!keyPair) {
       toast.error('Encryption keys not found')
       return
@@ -166,14 +177,22 @@ export default function FilesPage() {
         throw new Error('Decryption failed - wrong encryption key')
       }
 
-      // Download
+      // Create blob
       const blob = new Blob([decryptedData], { type: file.file_type })
-      downloadFile(blob, file.file_name)
+      
+      if (isPreview) {
+        // Open preview
+        setPreviewFile(file)
+        setPreviewBlob(blob)
+        toast.success('File decrypted for preview', { id: 'download' })
+      } else {
+        // Download
+        downloadFile(blob, file.file_name)
+        toast.success('File downloaded successfully', { id: 'download' })
+      }
 
       // Update access count
       await updateFileAccessCount(file.id)
-
-      toast.success('File downloaded successfully', { id: 'download' })
     } catch (error: any) {
       console.error('Download error:', error)
       toast.error(error.message || 'Download failed', { id: 'download' })
@@ -181,34 +200,74 @@ export default function FilesPage() {
   }
 
   const handleDelete = async (file: any) => {
-    if (!confirm(`Are you sure you want to delete "${file.file_name}"? This will permanently remove it from IPFS.`)) {
-      return
-    }
-
-    try {
-      toast.loading('Deleting file...', { id: 'delete' })
-
-      // Delete from IPFS first
-      console.log('Unpinning from IPFS:', file.ipfs_hash)
-      const unpinned = await unpinFromIPFS(file.ipfs_hash)
-      
-      if (!unpinned) {
-        console.warn('Failed to unpin from IPFS, continuing with database deletion')
-      } else {
-        console.log('Successfully unpinned from IPFS')
+    const isOwner = file.user_id === user?.id
+    const isShared = !isOwner
+    
+    if (isShared) {
+      // For shared files, just remove access for this user
+      if (!confirm(`Remove "${file.file_name}" from your shared files? This will not delete the file for the owner or other recipients.`)) {
+        return
       }
 
-      // Delete from Supabase
-      const success = await deleteFile(file.id)
-      if (success) {
-        removeFile(file.id)
-        toast.success('File deleted from database and IPFS', { id: 'delete' })
-      } else {
-        throw new Error('Delete from database failed')
+      try {
+        toast.loading('Removing shared file...', { id: 'delete' })
+        
+        if (!user?.username) {
+          throw new Error('Username not found')
+        }
+        
+        const currentUsername = user.username.toLowerCase()
+        
+        // Remove this user from shared_with and shared_keys
+        const updatedSharedWith = (file.shared_with || []).filter((u: string) => u !== currentUsername)
+        const updatedSharedKeys = (file.shared_keys || []).filter((k: any) => k.username !== currentUsername)
+        
+        const success = await updateFileMetadata(file.id, {
+          shared_with: updatedSharedWith.length > 0 ? updatedSharedWith : undefined,
+          shared_keys: updatedSharedKeys.length > 0 ? updatedSharedKeys : undefined,
+        } as any)
+        
+        if (success) {
+          removeFile(file.id)
+          toast.success('File removed from your shared files', { id: 'delete' })
+        } else {
+          throw new Error('Failed to remove file access')
+        }
+      } catch (error: any) {
+        console.error('Remove shared file error:', error)
+        toast.error(`Failed to remove shared file: ${error.message}`, { id: 'delete' })
       }
-    } catch (error: any) {
-      console.error('Delete error:', error)
-      toast.error(`Failed to delete file: ${error.message}`, { id: 'delete' })
+    } else {
+      // For owned files, delete completely
+      if (!confirm(`Are you sure you want to delete "${file.file_name}"? This will permanently remove it from IPFS and for all shared users.`)) {
+        return
+      }
+
+      try {
+        toast.loading('Deleting file...', { id: 'delete' })
+
+        // Delete from IPFS first
+        console.log('Unpinning from IPFS:', file.ipfs_hash)
+        const unpinned = await unpinFromIPFS(file.ipfs_hash)
+        
+        if (!unpinned) {
+          console.warn('Failed to unpin from IPFS, continuing with database deletion')
+        } else {
+          console.log('Successfully unpinned from IPFS')
+        }
+
+        // Delete from Supabase
+        const success = await deleteFile(file.id)
+        if (success) {
+          removeFile(file.id)
+          toast.success('File deleted from database and IPFS', { id: 'delete' })
+        } else {
+          throw new Error('Delete from database failed')
+        }
+      } catch (error: any) {
+        console.error('Delete error:', error)
+        toast.error(`Failed to delete file: ${error.message}`, { id: 'delete' })
+      }
     }
   }
 
@@ -228,14 +287,14 @@ export default function FilesPage() {
       <div className="lg:pl-64">
         {/* Header */}
         <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-          <div className="pl-16 pr-6 py-4 lg:px-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">My Files</h1>
-              <p className="text-sm text-muted-foreground">
+          <div className="pl-16 pr-4 py-3 lg:pl-6 lg:pr-6 lg:py-4 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-bold truncate">My Files</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 {files.length} file{files.length !== 1 ? 's' : ''}
               </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               <ThemeToggle />
               <ConnectWallet />
             </div>
@@ -243,7 +302,7 @@ export default function FilesPage() {
         </header>
 
         {/* Main Content */}
-        <main className="p-6">
+        <main className="p-4 sm:p-6">
           {/* Filters */}
           <div className="flex items-center gap-4 mb-6">
             <div className="relative">
@@ -251,9 +310,11 @@ export default function FilesPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => setShowFilterMenu(!showFilterMenu)}
+                className="text-xs sm:text-sm"
               >
-                <Filter className="h-4 w-4 mr-2" />
-                Filter: {filterType === 'all' ? 'All Files' : filterType.toUpperCase()}
+                <Filter className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Filter: </span>
+                {filterType === 'all' ? 'All' : filterType === 'shared' ? 'Shared' : filterType.toUpperCase()}
               </Button>
               {showFilterMenu && (
                 <div className="absolute top-full left-0 mt-2 w-48 bg-card border rounded-lg shadow-lg z-10">
@@ -262,6 +323,12 @@ export default function FilesPage() {
                     className="w-full text-left px-4 py-2 hover:bg-accent rounded-t-lg"
                   >
                     All Files
+                  </button>
+                  <button
+                    onClick={() => { setFilterType('shared'); setShowFilterMenu(false) }}
+                    className="w-full text-left px-4 py-2 hover:bg-accent"
+                  >
+                    Shared with you
                   </button>
                   <button
                     onClick={() => { setFilterType('pdf'); setShowFilterMenu(false) }}
@@ -300,6 +367,7 @@ export default function FilesPage() {
               {files
                 .filter((file) => {
                   if (filterType === 'all') return true
+                  if (filterType === 'shared') return file.user_id !== user?.id
                   if (filterType === 'pdf') return file.file_type.includes('pdf')
                   if (filterType === 'image') return file.file_type.startsWith('image/')
                   if (filterType === 'video') return file.file_type.startsWith('video/')
@@ -311,7 +379,7 @@ export default function FilesPage() {
                     key={file.id}
                     file={file}
                     currentUserId={user?.id}
-                    onView={handleDownload}
+                    onView={handleView}
                     onDownload={handleDownload}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
@@ -346,6 +414,23 @@ export default function FilesPage() {
           onUpdate={handleUpdate}
         />
       )}
+
+      {/* File Preview Dialog */}
+      <FilePreview
+        file={previewFile}
+        decryptedBlob={previewBlob}
+        isOpen={!!previewFile}
+        onClose={() => {
+          setPreviewFile(null)
+          setPreviewBlob(null)
+        }}
+        onDownload={() => {
+          if (previewBlob && previewFile) {
+            downloadFile(previewBlob, previewFile.file_name)
+            toast.success('File downloaded')
+          }
+        }}
+      />
     </div>
   )
 }
