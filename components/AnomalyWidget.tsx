@@ -12,11 +12,48 @@ export function AnomalyWidget() {
   const getStatusIcon = () => {
     switch (securityStatus) {
       case 'safe':
-        return <CheckCircle className="h-5 w-5 text-green-500" />
+        return (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ 
+              type: "spring",
+              stiffness: 200,
+              damping: 10
+            }}
+          >
+            <motion.div
+              animate={{ 
+                scale: [1, 1.2, 1],
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            >
+              <CheckCircle className="h-5 w-5 text-green-500" />
+            </motion.div>
+          </motion.div>
+        )
       case 'warning':
-        return <AlertTriangle className="h-5 w-5 text-yellow-500" />
+        return (
+          <motion.div
+            animate={{ rotate: [0, -10, 10, 0] }}
+            transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
+          >
+            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+          </motion.div>
+        )
       case 'alert':
-        return <AlertCircle className="h-5 w-5 text-red-500" />
+        return (
+          <motion.div
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+          >
+            <AlertCircle className="h-5 w-5 text-red-500" />
+          </motion.div>
+        )
       default:
         return <Shield className="h-5 w-5 text-blue-500" />
     }
@@ -105,11 +142,51 @@ export function AnomalyWidget() {
           ))}
 
           {anomalies.length === 0 && !isLoading && (
-            <div className="text-center py-8 text-muted-foreground">
-              <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-500" />
-              <p>No security alerts</p>
-              <p className="text-sm">Your account activity looks normal</p>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="text-center py-8 text-muted-foreground"
+            >
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ 
+                  type: "spring",
+                  stiffness: 200,
+                  damping: 15,
+                  delay: 0.2
+                }}
+              >
+                <motion.div
+                  animate={{ 
+                    scale: [1, 1.1, 1],
+                  }}
+                  transition={{ 
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-500" />
+                </motion.div>
+              </motion.div>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                No security alerts
+              </motion.p>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="text-sm"
+              >
+                Your account activity looks normal
+              </motion.p>
+            </motion.div>
           )}
         </div>
       </CardContent>

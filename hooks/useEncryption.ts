@@ -131,40 +131,57 @@ export function useEncryption() {
         // 1. Check localStorage first (fastest)
         const stored = localStorage.getItem(`encryption_keys_${walletAddress}`)
         if (stored) {
-          const keys = JSON.parse(stored)
-          console.log('✅ Restored keys from localStorage')
-          return keys
+          try {
+            const keys = JSON.parse(stored)
+            if (keys && keys.publicKey && keys.privateKey) {
+              console.log('✅ Restored keys from localStorage')
+              console.log('🔑 Public Key (first 50 chars):', keys.publicKey.substring(0, 50))
+              return keys
+            }
+          } catch (parseError) {
+            console.error('Failed to parse stored keys:', parseError)
+            localStorage.removeItem(`encryption_keys_${walletAddress}`)
+          }
         }
 
         // 2. Request wallet signature for cloud access
+        console.log('📝 Requesting wallet signature for cloud key access...')
         toast.loading('Sign message to access your encryption keys...', { id: 'keys' })
         const signature = await requestWalletSignature(walletAddress)
+        console.log('✅ Wallet signature obtained')
 
         // 3. Try to retrieve from cloud
+        console.log('☁️ Retrieving keys from cloud...')
         const cloudKeys = await retrieveKeysFromCloud(userId, signature)
-        if (cloudKeys) {
+        if (cloudKeys && cloudKeys.publicKey && cloudKeys.privateKey) {
           // Save to localStorage for faster access next time
           localStorage.setItem(`encryption_keys_${walletAddress}`, JSON.stringify(cloudKeys))
-          toast.success('Keys retrieved from cloud', { id: 'keys' })
+          console.log('✅ Keys retrieved from cloud and saved to localStorage')
+          console.log('🔑 Public Key (first 50 chars):', cloudKeys.publicKey.substring(0, 50))
+          toast.success('Keys synced from cloud ✓', { id: 'keys' })
           return cloudKeys
         }
 
         // 4. Generate new keys if none found
+        console.log('⚡ Generating new encryption keys...')
         toast.loading('Generating new encryption keys...', { id: 'keys' })
         const keyPair = await generateRSAKeyPair()
 
         // 5. Save to both cloud and localStorage
         localStorage.setItem(`encryption_keys_${walletAddress}`, JSON.stringify(keyPair))
+        console.log('💾 Saving keys to cloud...')
         await saveKeysToCloud(userId, walletAddress, keyPair, signature)
         
-        toast.success('Encryption keys generated and saved', { id: 'keys' })
+        console.log('✅ New keys generated and saved')
+        console.log('🔑 Public Key (first 50 chars):', keyPair.publicKey.substring(0, 50))
+        toast.success('Encryption keys generated and saved ✓', { id: 'keys' })
         return keyPair
       } catch (error: any) {
-        console.error('Error initializing keys:', error)
-        if (error.message?.includes('User rejected')) {
+        console.error('❌ Error initializing keys:', error)
+        if (error.message?.includes('User rejected') || error.message?.includes('denied')) {
           toast.error('Signature required to access encryption keys', { id: 'keys' })
         } else {
-          toast.error('Failed to initialize encryption keys', { id: 'keys' })
+          toast.error(`Failed to initialize keys: ${error.message}`, { id: 'keys' })
         }
         return null
       } finally {

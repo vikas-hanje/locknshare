@@ -551,23 +551,7 @@ export async function getIpGeolocation(ipAddress: string): Promise<any> {
     
     // Try multiple geolocation services for reliability
     const services = [
-      // IP-API (free, unlimited for non-commercial)
-      async () => {
-        const response = await fetch(`http://ip-api.com/json/${ipAddress}`, {
-          headers: { 'Accept': 'application/json' }
-        })
-        if (!response.ok) throw new Error('ip-api failed')
-        const data = await response.json()
-        if (data.status !== 'success') throw new Error(data.message || 'Failed')
-        return {
-          country: data.country,
-          city: data.city,
-          lat: data.lat,
-          lng: data.lon,
-          region: data.regionName,
-        }
-      },
-      // ipapi.co (backup)
+      // ipapi.co (free, HTTPS, 1000/day limit)
       async () => {
         const response = await fetch(`https://ipapi.co/${ipAddress}/json/`)
         if (!response.ok) throw new Error('ipapi.co failed')
@@ -579,6 +563,32 @@ export async function getIpGeolocation(ipAddress: string): Promise<any> {
           lat: data.latitude,
           lng: data.longitude,
           region: data.region,
+        }
+      },
+      // ipapi.is (free, HTTPS, unlimited)
+      async () => {
+        const response = await fetch(`https://api.ipapi.is/?q=${ipAddress}`)
+        if (!response.ok) throw new Error('ipapi.is failed')
+        const data = await response.json()
+        return {
+          country: data.location?.country,
+          city: data.location?.city,
+          lat: data.location?.latitude,
+          lng: data.location?.longitude,
+          region: data.location?.state,
+        }
+      },
+      // ip-api.com via proxy (backup - note: uses HTTP, may fail on HTTPS sites)
+      async () => {
+        const response = await fetch(`https://freeipapi.com/api/json/${ipAddress}`)
+        if (!response.ok) throw new Error('freeipapi failed')
+        const data = await response.json()
+        return {
+          country: data.countryName,
+          city: data.cityName,
+          lat: data.latitude,
+          lng: data.longitude,
+          region: data.regionName,
         }
       },
     ]

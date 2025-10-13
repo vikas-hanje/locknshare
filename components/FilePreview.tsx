@@ -55,7 +55,7 @@ export function FilePreview({ file, decryptedBlob, isOpen, onClose, onDownload }
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] p-0 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-card/50">
+        <div className="flex items-center justify-between p-4 pr-14 border-b bg-card/50">
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold truncate">{file.file_name}</h3>
             <p className="text-xs text-muted-foreground">
