@@ -97,13 +97,13 @@ export async function getFromIPFS(ipfsHash: string): Promise<Blob> {
   try {
     console.log('📥 Fetching from IPFS:', ipfsHash)
     
-    // Try multiple CORS-enabled gateways
+    // Use the most reliable CORS-enabled gateways
+    // Pinata dedicated gateway first (fastest for Pinata-uploaded files)
     const gateways = [
-      { url: `${GATEWAY_URL}/${ipfsHash}`, name: 'Pinata Dedicated', timeout: 15000 },
-      { url: `https://dweb.link/ipfs/${ipfsHash}`, name: 'dweb.link', timeout: 15000 },
-      { url: `https://w3s.link/ipfs/${ipfsHash}`, name: 'web3.storage', timeout: 15000 },
-      { url: `https://nftstorage.link/ipfs/${ipfsHash}`, name: 'nft.storage', timeout: 15000 },
-      { url: `https://ipfs.io/ipfs/${ipfsHash}`, name: 'IPFS.io', timeout: 20000 },
+      { url: `${GATEWAY_URL}/${ipfsHash}`, name: 'Pinata Dedicated', timeout: 10000 },
+      { url: `https://gateway.pinata.cloud/ipfs/${ipfsHash}`, name: 'Pinata Public', timeout: 10000 },
+      { url: `https://dweb.link/ipfs/${ipfsHash}`, name: 'dweb.link', timeout: 12000 },
+      { url: `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`, name: 'Cloudflare', timeout: 12000 },
     ]
 
     let lastError: any = null
@@ -118,21 +118,20 @@ export async function getFromIPFS(ipfsHash: string): Promise<Blob> {
           headers: {
             'Accept': '*/*',
           },
-          // Important: don't use credentials to avoid CORS issues
           withCredentials: false
         })
 
         if (response.data && response.data.size > 0) {
-          console.log(`✅ Successfully fetched from ${name} (${(response.data.size / 1024 / 1024).toFixed(2)} MB)`)
+          console.log(`✅ Fetched from ${name} (${(response.data.size / 1024 / 1024).toFixed(2)} MB)`)
           return response.data
         }
       } catch (err: any) {
         const errorMsg = err.code === 'ECONNABORTED' 
           ? 'timeout' 
           : err.code === 'ERR_NETWORK'
-          ? 'network/CORS error'
+          ? 'CORS/network'
           : err.message
-        console.warn(`❌ ${name} failed: ${errorMsg}`)
+        console.warn(`❌ ${name}: ${errorMsg}`)
         lastError = err
         continue
       }
@@ -140,8 +139,8 @@ export async function getFromIPFS(ipfsHash: string): Promise<Blob> {
 
     throw lastError || new Error('All IPFS gateways failed')
   } catch (error: any) {
-    console.error('❌ Error fetching from IPFS:', error)
-    throw new Error(`Failed to fetch file from IPFS: ${error.message || 'Unknown error'}`)
+    console.error('❌ IPFS fetch error:', error)
+    throw new Error(`Failed to fetch from IPFS: ${error.message || 'Unknown error'}`)
   }
 }
 

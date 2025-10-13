@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Download, ExternalLink } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogClose } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { FileMetadata } from '@/types'
 
@@ -53,9 +53,9 @@ export function FilePreview({ file, decryptedBlob, isOpen, onClose, onDownload }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] p-0 overflow-hidden">
+      <DialogContent className="max-w-5xl max-h-[90vh] p-0 overflow-hidden [&>button]:hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 pr-14 border-b bg-card/50">
+        <div className="flex items-center justify-between p-4 border-b bg-card/50">
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold truncate">{file.file_name}</h3>
             <p className="text-xs text-muted-foreground">
@@ -72,6 +72,16 @@ export function FilePreview({ file, decryptedBlob, isOpen, onClose, onDownload }
               <Download className="h-4 w-4" />
               Download
             </Button>
+            <DialogClose asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2"
+              >
+                <X className="h-4 w-4" />
+                Close
+              </Button>
+            </DialogClose>
           </div>
         </div>
 

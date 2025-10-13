@@ -117,12 +117,13 @@ const FileCardComponent = ({ file, currentUserId, onDownload, onView, onDelete, 
               <Share2 className="h-4 w-4" />
             </Button>
           )}
-          {onDelete && isOwner && (
+          {onDelete && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => onDelete(file)}
               className="text-destructive hover:text-destructive"
+              title={isSharedWithMe ? "Remove from my files" : "Delete file"}
             >
               <Trash2 className="h-4 w-4" />
             </Button>

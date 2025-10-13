@@ -8,7 +8,12 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
   title: 'LockNShare - Secure Decentralized File Sharing',
-  description: 'Secure, encrypted file sharing powered by blockchain and AI',
+  description: 'Secure, encrypted file sharing powered by blockchain and AI. Store files on IPFS with end-to-end encryption.',
+  keywords: ['blockchain', 'file sharing', 'encryption', 'IPFS', 'decentralized', 'Web3'],
+  authors: [{ name: 'LockNShare Team' }],
+  icons: {
+    icon: '/icon',
+  },
 }
 
 export default function RootLayout({

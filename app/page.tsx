@@ -171,13 +171,15 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.7 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 px-4"
           >
-            <ConnectWallet />
-            <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
-              <Link href="#features">
+            <div className="w-full sm:w-auto">
+              <ConnectWallet />
+            </div>
+            <Button variant="outline" size="lg" asChild className="w-auto">
+              <Link href="#features" className="flex items-center gap-2">
                 Learn More
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </motion.div>

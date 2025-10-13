@@ -151,16 +151,38 @@ export default function FilesPage() {
       let encryptedKeyToUse = file.encrypted_key
       const isSharedFile = file.user_id !== user?.id
       
+      console.log('🔍 Decryption Debug:', {
+        isSharedFile,
+        currentUsername: user?.username?.toLowerCase(),
+        hasSharedKeys: !!file.shared_keys,
+        sharedKeysCount: file.shared_keys?.length || 0,
+        sharedUsers: file.shared_with,
+      })
+      
       if (isSharedFile && file.shared_keys && user?.username) {
         // This is a shared file - find the key encrypted for this user
         const myUsername = user.username.toLowerCase()
-        const sharedKey = file.shared_keys.find((k: any) => (k.username || '').toLowerCase() === myUsername)
+        console.log('📋 Available shared keys:', file.shared_keys.map((k: any) => k.username))
+        
+        const sharedKey = file.shared_keys.find((k: any) => {
+          const keyUsername = (k.username || '').toLowerCase()
+          console.log(`Comparing: "${keyUsername}" === "${myUsername}"`)
+          return keyUsername === myUsername
+        })
+        
         if (sharedKey) {
           encryptedKeyToUse = sharedKey.encrypted_aes_key
           console.log(`✅ Using shared key for @${myUsername}`)
         } else {
-          throw new Error(`No encryption key found for @${myUsername}. File owner needs to re-share.`)
+          console.error('❌ No matching key found in shared_keys:', file.shared_keys)
+          throw new Error(`No encryption key found for @${myUsername}. File owner needs to re-share the file.`)
         }
+      } else if (isSharedFile) {
+        console.error('❌ Shared file but missing required data:', {
+          hasSharedKeys: !!file.shared_keys,
+          hasUsername: !!user?.username
+        })
+        throw new Error('Unable to decrypt shared file - missing encryption keys')
       }
 
       // Prepare encryption data for decryption
