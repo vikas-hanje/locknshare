@@ -126,20 +126,32 @@ export default function UploadPage() {
       
       setTotalProgress(85)
 
-      // If file is shared, normalize usernames and encrypt AES key for each recipient
+      // Always include owner's username for cross-device access + any additional recipients
       let sharedKeys: any[] = []
-      const normalizedSharedWith = (metadata.sharedWith || [])
+      const additionalRecipients = (metadata.sharedWith || [])
         .map(u => u.replace(/^@/, '').toLowerCase())
         .filter(Boolean)
-      if (normalizedSharedWith.length > 0) {
-        console.log(`Encrypting file key for ${normalizedSharedWith.length} recipients...`)
+      
+      // Add owner's username to shared list for cross-device access
+      const allRecipients = user.username 
+        ? [user.username.toLowerCase(), ...additionalRecipients]
+        : additionalRecipients
+      
+      // Remove duplicates
+      const uniqueRecipients = Array.from(new Set(allRecipients))
+      
+      if (uniqueRecipients.length > 0) {
+        console.log(`🔑 Encrypting file key for ${uniqueRecipients.length} users (including owner)...`)
         sharedKeys = await encryptKeyForUsersFromOwnerEncrypted(
           encryptedResult.encryptedKey,
           keyPair.privateKey,
-          normalizedSharedWith
+          uniqueRecipients
         )
-        console.log(`✅ Encrypted keys for ${sharedKeys.length} recipients`)
+        console.log(`✅ Encrypted keys for ${sharedKeys.length} users`)
       }
+      
+      // Only store additional recipients in shared_with (not owner)
+      const normalizedSharedWith = additionalRecipients
 
       setTotalProgress(90)
 

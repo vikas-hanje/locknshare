@@ -59,47 +59,77 @@ export class AnomalyDetector {
     console.log(`🔍 Analyzing activity for user: ${userId}`)
     
     try {
-      // Get recent activity (last 24 hours)
-      const activities = await this.getRecentActivities(userId, 24)
+      // Get recent activity for rate checks (last 1 hour)
+      const recentActivities = await this.getRecentActivities(userId, 1)
       
-      if (activities.length === 0) {
+      // Get wider activity window for other checks (last 24 hours)
+      const allActivities = await this.getRecentActivities(userId, 24)
+      
+      console.log(`📊 Found ${recentActivities.length} activities in last hour, ${allActivities.length} in last 24 hours`)
+      
+      if (allActivities.length === 0) {
         console.log('No recent activities to analyze')
         return []
       }
 
-      // Rule 1: Failed login attempts
-      const failedLoginAnomaly = await this.checkFailedLogins(userId, activities)
-      if (failedLoginAnomaly) anomalies.push(failedLoginAnomaly)
+      // Rule 1: Failed login attempts (last hour)
+      const failedLoginAnomaly = await this.checkFailedLogins(userId, recentActivities)
+      if (failedLoginAnomaly) {
+        console.log('⚠️ Anomaly detected: Failed logins')
+        anomalies.push(failedLoginAnomaly)
+      }
 
-      // Rule 2: Download rate
-      const downloadRateAnomaly = await this.checkDownloadRate(userId, activities)
-      if (downloadRateAnomaly) anomalies.push(downloadRateAnomaly)
+      // Rule 2: Download rate (last hour)
+      const downloadRateAnomaly = await this.checkDownloadRate(userId, recentActivities)
+      if (downloadRateAnomaly) {
+        console.log('⚠️ Anomaly detected: Excessive download rate')
+        anomalies.push(downloadRateAnomaly)
+      }
 
-      // Rule 3: Upload rate
-      const uploadRateAnomaly = await this.checkUploadRate(userId, activities)
-      if (uploadRateAnomaly) anomalies.push(uploadRateAnomaly)
+      // Rule 3: Upload rate (last hour)
+      const uploadRateAnomaly = await this.checkUploadRate(userId, recentActivities)
+      if (uploadRateAnomaly) {
+        console.log('⚠️ Anomaly detected: Excessive upload rate')
+        anomalies.push(uploadRateAnomaly)
+      }
 
-      // Rule 4: Unusual access times
-      const unusualTimeAnomaly = await this.checkUnusualAccessTime(userId, activities)
-      if (unusualTimeAnomaly) anomalies.push(unusualTimeAnomaly)
+      // Rule 4: Unusual access times (last 24 hours)
+      const unusualTimeAnomaly = await this.checkUnusualAccessTime(userId, allActivities)
+      if (unusualTimeAnomaly) {
+        console.log('⚠️ Anomaly detected: Unusual access time')
+        anomalies.push(unusualTimeAnomaly)
+      }
 
       // Rule 5: IP location changes
       const locationAnomaly = await this.checkLocationChanges(userId)
-      if (locationAnomaly) anomalies.push(locationAnomaly)
+      if (locationAnomaly) {
+        console.log('⚠️ Anomaly detected: Location change')
+        anomalies.push(locationAnomaly)
+      }
 
-      // Rule 6: Rapid consecutive activities
-      const rapidActivityAnomaly = await this.checkRapidActivity(userId, activities)
-      if (rapidActivityAnomaly) anomalies.push(rapidActivityAnomaly)
+      // Rule 6: Rapid consecutive activities (last hour)
+      const rapidActivityAnomaly = await this.checkRapidActivity(userId, recentActivities)
+      if (rapidActivityAnomaly) {
+        console.log('⚠️ Anomaly detected: Rapid activity')
+        anomalies.push(rapidActivityAnomaly)
+      }
 
-      // AI Analysis: Use HuggingFace to detect suspicious patterns
-      if (activities.length >= 3) {
-        const aiAnomaly = await this.analyzeWithAI(userId, activities)
-        if (aiAnomaly) anomalies.push(aiAnomaly)
+      // AI Analysis: Use HuggingFace to detect suspicious patterns (optional)
+      if (allActivities.length >= 3 && process.env.NEXT_PUBLIC_HUGGINGFACE_API_KEY !== 'dummy-key') {
+        try {
+          const aiAnomaly = await this.analyzeWithAI(userId, allActivities)
+          if (aiAnomaly) {
+            console.log('⚠️ Anomaly detected: AI analysis')
+            anomalies.push(aiAnomaly)
+          }
+        } catch (aiError) {
+          console.log('ℹ️ AI analysis skipped (optional feature)')
+        }
       }
 
       // Save anomalies to database
       if (anomalies.length > 0) {
-        console.log(`⚠️ Detected ${anomalies.length} anomalies`)
+        console.log(`⚠️ Total detected anomalies: ${anomalies.length}`)
         await this.saveAnomalies(anomalies)
       } else {
         console.log('✅ No anomalies detected')
@@ -107,7 +137,7 @@ export class AnomalyDetector {
 
       return anomalies
     } catch (error) {
-      console.error('Error analyzing activity:', error)
+      console.error('❌ Error analyzing activity:', error)
       return []
     }
   }

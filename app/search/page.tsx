@@ -8,6 +8,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { ConnectWallet } from '@/components/ConnectWallet'
 import { SearchBar } from '@/components/SearchBar'
 import { FileCard } from '@/components/FileCard'
+import { FilePreview } from '@/components/FilePreview'
 import { useStore } from '@/store/useStore'
 import { useEncryption } from '@/hooks/useEncryption'
 import { FileMetadata } from '@/types'
@@ -24,6 +25,8 @@ export default function SearchPage() {
   const [results, setResults] = useState<FileMetadata[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  const [previewFile, setPreviewFile] = useState<FileMetadata | null>(null)
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
 
   useEffect(() => {
     if (!isConnected) {
@@ -31,89 +34,110 @@ export default function SearchPage() {
     }
   }, [isConnected, router])
 
-  const handleDownload = async (file: FileMetadata) => {
+  // Shared decryption logic
+  const decryptFile = async (file: FileMetadata): Promise<ArrayBuffer> => {
     if (!keyPair) {
-      toast.error('Encryption keys not found. Please reconnect your wallet.')
-      return
+      throw new Error('Encryption keys not found')
     }
 
+    // Download from IPFS
+    const encryptedBlob = await getFromIPFS(file.ipfs_hash)
+    const encryptedData = await encryptedBlob.text()
+
+    // Verify encryption metadata exists
+    if (!file.encrypted_key || !file.iv) {
+      throw new Error('Missing encryption metadata')
+    }
+
+    let decryptedData: ArrayBuffer | null = null
+    let encryptedKeyToUse = file.encrypted_key
+    const isOwner = file.user_id === user?.id
+
+    console.log('🔍 Decryption attempt:', {
+      isOwner,
+      username: user?.username,
+      hasSharedKeys: !!file.shared_keys && file.shared_keys.length > 0
+    })
+
+    // Try normal decryption first
+    try {
+      const encryptionResult = {
+        encryptedData: encryptedData,
+        encryptedKey: encryptedKeyToUse,
+        iv: file.iv,
+      }
+
+      decryptedData = await decrypt(encryptionResult, keyPair.privateKey)
+      if (decryptedData) {
+        console.log('✅ Decryption successful with owner key')
+      }
+    } catch (primaryError) {
+      console.warn('❌ Primary decryption failed:', primaryError)
+      decryptedData = null
+    }
+
+    // Fallback: If primary decryption failed and there are shared keys, try them
+    if (!decryptedData && file.shared_keys && file.shared_keys.length > 0 && user?.username) {
+      console.log('🔄 Attempting fallback decryption with shared keys...')
+      
+      const sharedKey = file.shared_keys.find((k: any) => {
+        const keyUsername = (k.username || '').toLowerCase()
+        const currentUsername = (user.username || '').toLowerCase()
+        return keyUsername === currentUsername
+      })
+
+      if (sharedKey && sharedKey.encrypted_aes_key) {
+        console.log(`🔑 Found shared key for @${user.username}, retrying...`)
+        
+        try {
+          const fallbackResult = {
+            encryptedData: encryptedData,
+            encryptedKey: sharedKey.encrypted_aes_key,
+            iv: file.iv,
+          }
+
+          decryptedData = await decrypt(fallbackResult, keyPair.privateKey)
+          if (decryptedData) {
+            console.log('✅ Decryption successful with shared key!')
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback decryption also failed:', fallbackError)
+        }
+      } else {
+        console.warn('⚠️ No matching shared key found for user')
+      }
+    }
+
+    // Final check
+    if (!decryptedData) {
+      throw new Error('Decryption failed with all available keys')
+    }
+
+    return decryptedData
+  }
+
+  const handleView = async (file: FileMetadata) => {
+    try {
+      toast.loading('Decrypting for preview...', { id: 'view' })
+      
+      const decryptedData = await decryptFile(file)
+      const blob = new Blob([decryptedData], { type: file.file_type })
+      
+      setPreviewFile(file)
+      setPreviewBlob(blob)
+      
+      toast.success('File decrypted for preview', { id: 'view' })
+    } catch (error: any) {
+      console.error('❌ Preview error:', error)
+      toast.error(error.message || 'Preview failed', { id: 'view' })
+    }
+  }
+
+  const handleDownload = async (file: FileMetadata) => {
     try {
       toast.loading('Downloading and decrypting...', { id: 'download' })
 
-      // Download from IPFS
-      const encryptedBlob = await getFromIPFS(file.ipfs_hash)
-      const encryptedData = await encryptedBlob.text()
-
-      // Verify encryption metadata exists
-      if (!file.encrypted_key || !file.iv) {
-        throw new Error('Missing encryption metadata')
-      }
-
-      let decryptedData: ArrayBuffer | null = null
-      let encryptedKeyToUse = file.encrypted_key
-      const isOwner = file.user_id === user?.id
-
-      console.log('🔍 Decryption attempt:', {
-        isOwner,
-        username: user?.username,
-        hasSharedKeys: !!file.shared_keys && file.shared_keys.length > 0
-      })
-
-      // Try normal decryption first
-      try {
-        const encryptionResult = {
-          encryptedData: encryptedData,
-          encryptedKey: encryptedKeyToUse,
-          iv: file.iv,
-        }
-
-        decryptedData = await decrypt(encryptionResult, keyPair.privateKey)
-        if (decryptedData) {
-          console.log('✅ Decryption successful with owner key')
-        }
-      } catch (primaryError) {
-        console.warn('❌ Primary decryption failed:', primaryError)
-        decryptedData = null
-      }
-
-      // Fallback: If primary decryption failed and there are shared keys, try them
-      if (!decryptedData && file.shared_keys && file.shared_keys.length > 0 && user?.username) {
-        console.log('🔄 Attempting fallback decryption with shared keys...')
-        
-        const sharedKey = file.shared_keys.find((k: any) => {
-          const keyUsername = (k.username || '').toLowerCase()
-          const currentUsername = (user.username || '').toLowerCase()
-          return keyUsername === currentUsername
-        })
-
-        if (sharedKey && sharedKey.encrypted_aes_key) {
-          console.log(`🔑 Found shared key for @${user.username}, retrying...`)
-          
-          try {
-            const fallbackResult = {
-              encryptedData: encryptedData,
-              encryptedKey: sharedKey.encrypted_aes_key,
-              iv: file.iv,
-            }
-
-            decryptedData = await decrypt(fallbackResult, keyPair.privateKey)
-            if (decryptedData) {
-              console.log('✅ Decryption successful with shared key!')
-            }
-          } catch (fallbackError) {
-            console.error('❌ Fallback decryption also failed:', fallbackError)
-          }
-        } else {
-          console.warn('⚠️ No matching shared key found for user')
-        }
-      }
-
-      // Final check
-      if (!decryptedData) {
-        throw new Error('Decryption failed with both owner and shared keys')
-      }
-
-      // Download
+      const decryptedData = await decryptFile(file)
       const blob = new Blob([decryptedData], { type: file.file_type })
       downloadFile(blob, file.file_name)
 
@@ -124,6 +148,14 @@ export default function SearchPage() {
     } catch (error: any) {
       console.error('❌ Download error:', error)
       toast.error(error.message || 'Download failed', { id: 'download' })
+    }
+  }
+
+  const handlePreviewDownload = () => {
+    if (previewBlob && previewFile) {
+      downloadFile(previewBlob, previewFile.file_name)
+      updateFileAccessCount(previewFile.id)
+      toast.success('File downloaded')
     }
   }
 
@@ -216,7 +248,7 @@ export default function SearchPage() {
                     key={file.id} 
                     file={file}
                     currentUserId={user?.id}
-                    onView={handleDownload}
+                    onView={handleView}
                     onDownload={handleDownload}
                   />
                 ))}
@@ -232,6 +264,20 @@ export default function SearchPage() {
           </div>
         </main>
       </div>
+
+      {/* File Preview Modal */}
+      {previewFile && previewBlob && (
+        <FilePreview
+          file={previewFile}
+          decryptedBlob={previewBlob}
+          isOpen={!!previewFile}
+          onClose={() => {
+            setPreviewFile(null)
+            setPreviewBlob(null)
+          }}
+          onDownload={handlePreviewDownload}
+        />
+      )}
     </div>
   )
 }

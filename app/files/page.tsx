@@ -15,6 +15,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useStore } from '@/store/useStore'
 import { useEncryption } from '@/hooks/useEncryption'
+import { useAnomalyMonitor } from '@/hooks/useAnomalyMonitor'
 import { getUserFiles, getAccessibleFiles, deleteFile, updateFileAccessCount, updateFileMetadata } from '@/lib/supabase'
 import { getFromIPFS, unpinFromIPFS } from '@/lib/pinata'
 import { downloadFile } from '@/lib/utils'
@@ -26,6 +27,7 @@ export default function FilesPage() {
   const router = useRouter()
   const { isConnected, user, files, setFiles, keyPair, setKeyPair, removeFile } = useStore()
   const { decrypt, generateKeys } = useEncryption()
+  const { logActivity } = useAnomalyMonitor()
   const [isLoading, setIsLoading] = useState(true)
   const [filterType, setFilterType] = useState<string>('all')
   const [showFilterMenu, setShowFilterMenu] = useState(false)
@@ -253,10 +255,24 @@ export default function FilesPage() {
         setPreviewFile(file)
         setPreviewBlob(blob)
         toast.success('File decrypted for preview', { id: 'download' })
+        
+        // Log view activity
+        await logActivity('view', {
+          fileId: file.id,
+          fileName: file.file_name,
+          success: true,
+        })
       } else {
         // Download
         downloadFile(blob, file.file_name)
         toast.success('File downloaded successfully', { id: 'download' })
+        
+        // Log download activity
+        await logActivity('download', {
+          fileId: file.id,
+          fileName: file.file_name,
+          success: true,
+        })
       }
 
       // Update access count

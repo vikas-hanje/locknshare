@@ -72,22 +72,25 @@ export function useAnomalyMonitor() {
       try {
         // Log the activity
         await logActivityToDb(user.id, activityType, metadata)
+        console.log(`✅ Logged ${activityType} activity`)
 
         // Run anomaly detection (in background)
         setTimeout(async () => {
           try {
-            const apiKey = process.env.NEXT_PUBLIC_HUGGINGFACE_API_KEY
-            if (apiKey) {
-              const detector = new AnomalyDetector(apiKey)
-              await detector.analyzeActivity(user.id)
-              
-              // Refresh anomalies after detection
-              await fetchAnomalies()
-            }
+            const apiKey = process.env.NEXT_PUBLIC_HUGGINGFACE_API_KEY || 'dummy-key'
+            console.log('🔍 Starting anomaly detection...')
+            
+            const detector = new AnomalyDetector(apiKey)
+            const detectedAnomalies = await detector.analyzeActivity(user.id)
+            
+            console.log(`🛡️ Anomaly detection complete: ${detectedAnomalies.length} anomalies found`)
+            
+            // Refresh anomalies after detection
+            await fetchAnomalies()
           } catch (error) {
-            console.error('Error running anomaly detection:', error)
+            console.error('❌ Error running anomaly detection:', error)
           }
-        }, 1000) // Delay 1 second to not block UI
+        }, 2000) // Delay 2 seconds to ensure activity is saved
       } catch (error) {
         console.error('Error logging activity:', error)
       }
