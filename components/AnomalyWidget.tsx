@@ -170,7 +170,7 @@ export function AnomalyWidget() {
                   <div className="flex gap-2 text-xs">
                     <AlertOctagon className="h-4 w-4 text-orange-500 flex-shrink-0 mt-0.5" />
                     <div className="text-muted-foreground">
-                      <p className="font-medium text-foreground mb-1">If this wasn't you:</p>
+                      <p className="font-medium text-foreground mb-1">If this wasn&apos;t you:</p>
                       <ul className="list-disc list-inside space-y-0.5">
                         <li>Change your MetaMask password immediately</li>
                         <li>Check for unauthorized wallet access</li>

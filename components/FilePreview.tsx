@@ -89,6 +89,7 @@ export function FilePreview({ file, decryptedBlob, isOpen, onClose, onDownload }
         <div className="overflow-auto max-h-[calc(90vh-80px)] bg-muted/20">
           {previewType === 'image' && previewUrl && (
             <div className="flex items-center justify-center p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewUrl}
                 alt={file.file_name}
