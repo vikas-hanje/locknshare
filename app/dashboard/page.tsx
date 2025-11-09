@@ -153,15 +153,25 @@ export default function DashboardPage() {
             >
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Threat Level</CardTitle>
+                  <CardTitle className="text-sm font-medium">Trust Score</CardTitle>
                   <Shield className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-500">
-                    {userStats?.trust_score || 0}%
+                  <div className={`text-2xl font-bold ${
+                    (userStats?.trust_score || 100) >= 80 
+                      ? 'text-green-500' 
+                      : (userStats?.trust_score || 100) >= 50 
+                        ? 'text-yellow-500' 
+                        : 'text-red-500'
+                  }`}>
+                    {userStats?.trust_score !== undefined ? userStats.trust_score : 100}%
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    All systems normal
+                    {(userStats?.trust_score || 100) >= 80 
+                      ? 'All systems normal' 
+                      : (userStats?.trust_score || 100) >= 50 
+                        ? 'Minor security issues' 
+                        : 'Attention required'}
                   </p>
                 </CardContent>
               </Card>

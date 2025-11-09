@@ -148,6 +148,21 @@ export default function UploadPage() {
           uniqueRecipients
         )
         console.log(`✅ Encrypted keys for ${sharedKeys.length} users:`, sharedKeys.map(k => k.username))
+        
+        // Check if any recipients were skipped due to missing public keys
+        const failedRecipients = uniqueRecipients.filter(
+          username => !sharedKeys.some(k => k.username === username)
+        )
+        
+        if (failedRecipients.length > 0 && failedRecipients.length < uniqueRecipients.length) {
+          const failedUsers = failedRecipients.filter(u => u !== (user.username || '').toLowerCase())
+          if (failedUsers.length > 0) {
+            toast.error(
+              `Some users can't access this file: ${failedUsers.map(u => '@' + u).join(', ')}. They need to connect their wallet first.`,
+              { duration: 8000 }
+            )
+          }
+        }
       }
       
       // Store ALL recipients in shared_with including owner for cross-device queries

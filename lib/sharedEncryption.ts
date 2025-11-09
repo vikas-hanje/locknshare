@@ -70,17 +70,30 @@ export async function encryptKeyForUsersFromOwnerEncrypted(
  */
 export async function getPublicKeyForUsername(username: string): Promise<string | null> {
   try {
+    console.log(`🔍 Looking up public key for @${username}`)
+    
     const { data, error } = await supabase
       .from('users')
-      .select('public_key')
+      .select('public_key, id, wallet_address')
       .eq('username', username)
       .single()
 
-    if (error || !data?.public_key) {
-      console.error(`No public key found for @${username}`)
+    if (error) {
+      console.error(`❌ Database error fetching public key for @${username}:`, error.message)
       return null
     }
 
+    if (!data) {
+      console.error(`❌ User @${username} not found in database`)
+      return null
+    }
+
+    if (!data.public_key) {
+      console.error(`❌ User @${username} exists but has no public key. They need to connect their wallet first.`)
+      return null
+    }
+
+    console.log(`✅ Found public key for @${username} (user_id: ${data.id})`)
     return data.public_key
   } catch (error) {
     console.error('Error fetching public key:', error)
@@ -96,14 +109,18 @@ export async function encryptKeyForUsers(
   aesKeyBase64: string,
   usernames: string[]
 ): Promise<EncryptedKeyForUser[]> {
+  console.log(`🔐 Encrypting AES key for ${usernames.length} users:`, usernames)
   const encryptedKeys: EncryptedKeyForUser[] = []
+  const errors: string[] = []
 
   for (const username of usernames) {
     try {
       // Get user's public key
       const publicKey = await getPublicKeyForUsername(username)
       if (!publicKey) {
-        console.warn(`Skipping @${username} - no public key`)
+        const errorMsg = `@${username} - no public key available. User needs to connect wallet.`
+        console.warn(`⚠️ Skipping ${errorMsg}`)
+        errors.push(errorMsg)
         continue
       }
 
@@ -136,9 +153,16 @@ export async function encryptKeyForUsers(
       })
 
       console.log(`✅ Encrypted key for @${username}`)
-    } catch (error) {
-      console.error(`Error encrypting key for @${username}:`, error)
+    } catch (error: any) {
+      const errorMsg = `@${username} - ${error.message || 'Unknown error'}`
+      console.error(`❌ Error encrypting key for ${errorMsg}`, error)
+      errors.push(errorMsg)
     }
+  }
+
+  console.log(`📊 Encryption summary: ${encryptedKeys.length} successful, ${errors.length} failed`)
+  if (errors.length > 0) {
+    console.warn('⚠️ Failed users:', errors)
   }
 
   return encryptedKeys

@@ -10,7 +10,7 @@ export function useAnomalyMonitor() {
   const [securityStatus, setSecurityStatus] = useState<'safe' | 'warning' | 'alert'>('safe')
   const [isLoading, setIsLoading] = useState(false)
   
-  const { user } = useStore()
+  const { user, userStats, setUserStats } = useStore()
 
   // Fetch anomalies
   const fetchAnomalies = useCallback(async () => {
@@ -34,26 +34,40 @@ export function useAnomalyMonitor() {
   const updateSecurityStatus = (anomalyList: AnomalyRecord[]) => {
     const unresolved = anomalyList.filter(a => !a.resolved)
     
+    let newTrustScore = 100
+    let newSecurityStatus: 'safe' | 'warning' | 'alert' = 'safe'
+    
     if (unresolved.length === 0) {
-      setSecurityStatus('safe')
-      setTrustScore(100)
-      return
-    }
-
-    // Check severity
-    const hasCritical = unresolved.some(a => a.severity === 'critical')
-    const hasHigh = unresolved.some(a => a.severity === 'high')
-    const hasMedium = unresolved.some(a => a.severity === 'medium')
-
-    if (hasCritical || unresolved.length > 5) {
-      setSecurityStatus('alert')
-      setTrustScore(Math.max(0, 100 - unresolved.length * 20))
-    } else if (hasHigh || unresolved.length > 2) {
-      setSecurityStatus('warning')
-      setTrustScore(Math.max(40, 100 - unresolved.length * 10))
+      newSecurityStatus = 'safe'
+      newTrustScore = 100
     } else {
-      setSecurityStatus('safe')
-      setTrustScore(Math.max(70, 100 - unresolved.length * 5))
+      // Check severity
+      const hasCritical = unresolved.some(a => a.severity === 'critical')
+      const hasHigh = unresolved.some(a => a.severity === 'high')
+      const hasMedium = unresolved.some(a => a.severity === 'medium')
+
+      if (hasCritical || unresolved.length > 5) {
+        newSecurityStatus = 'alert'
+        newTrustScore = Math.max(0, 100 - unresolved.length * 20)
+      } else if (hasHigh || unresolved.length > 2) {
+        newSecurityStatus = 'warning'
+        newTrustScore = Math.max(40, 100 - unresolved.length * 10)
+      } else {
+        newSecurityStatus = 'safe'
+        newTrustScore = Math.max(70, 100 - unresolved.length * 5)
+      }
+    }
+    
+    setSecurityStatus(newSecurityStatus)
+    setTrustScore(newTrustScore)
+    
+    // Sync trust score to userStats in store
+    if (userStats) {
+      setUserStats({
+        ...userStats,
+        trust_score: newTrustScore,
+        anomaly_count: unresolved.length,
+      })
     }
   }
 
@@ -125,10 +139,10 @@ export function useAnomalyMonitor() {
     if (user) {
       fetchAnomalies()
 
-      // Refresh every 5 minutes
+      // Refresh every 30 seconds for real-time updates
       const interval = setInterval(() => {
         fetchAnomalies()
-      }, 5 * 60 * 1000)
+      }, 30 * 1000)
 
       return () => clearInterval(interval)
     }
