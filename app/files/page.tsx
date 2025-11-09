@@ -310,14 +310,25 @@ export default function FilesPage() {
         const updatedSharedWith = (file.shared_with || []).filter((u: string) => u !== currentUsername)
         const updatedSharedKeys = (file.shared_keys || []).filter((k: any) => k.username !== currentUsername)
         
+        console.log('🗑️ Removing user from shared file:', {
+          fileId: file.id,
+          currentUser: currentUsername,
+          beforeSharedWith: file.shared_with,
+          afterSharedWith: updatedSharedWith
+        })
+        
         const success = await updateFileMetadata(file.id, {
-          shared_with: updatedSharedWith.length > 0 ? updatedSharedWith : undefined,
-          shared_keys: updatedSharedKeys.length > 0 ? updatedSharedKeys : undefined,
+          shared_with: updatedSharedWith,
+          shared_keys: updatedSharedKeys,
         } as any)
         
         if (success) {
           removeFile(file.id)
-          toast.success('File removed from your shared files', { id: 'delete' })
+          toast.success('File deleted for me', { id: 'delete' })
+          
+          // Refresh file list from database
+          const refreshedFiles = await getAccessibleFiles(user.id, user.username)
+          setFiles(refreshedFiles)
         } else {
           throw new Error('Failed to remove file access')
         }
@@ -520,7 +531,10 @@ export default function FilesPage() {
       {deleteConfirm && (
         <ConfirmDialog
           isOpen={true}
-          onClose={() => setDeleteConfirm(null)}
+          onClose={() => {
+            setDeleteConfirm(null)
+            setIsLoading(false)
+          }}
           onConfirm={executeDelete}
           title={deleteConfirm.isShared ? 'Remove Shared File?' : 'Delete File Permanently?'}
           description={

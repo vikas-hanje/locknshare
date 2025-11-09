@@ -559,17 +559,41 @@ export async function logActivity(
 }
 
 /**
- * Get user's IP address
+ * Get user's IP address - Try multiple services with timeout
  */
 export async function getUserIp(): Promise<string> {
-  try {
-    const response = await fetch('https://api.ipify.org?format=json')
-    const data = await response.json()
-    return data.ip
-  } catch (error) {
-    console.error('Error getting IP:', error)
-    return 'unknown'
+  const services = [
+    'https://api.ipify.org?format=json',
+    'https://api64.ipify.org?format=json',
+    'https://api.my-ip.io/v2/ip.json',
+  ]
+  
+  for (const service of services) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+      
+      const response = await fetch(service, { 
+        signal: controller.signal,
+        mode: 'cors'
+      })
+      clearTimeout(timeoutId)
+      
+      const data = await response.json()
+      const ip = data.ip || data.address
+      
+      if (ip) {
+        console.log(`✅ Got IP from ${service}:`, ip)
+        return ip
+      }
+    } catch (error: any) {
+      console.warn(`Failed to get IP from ${service}:`, error.message)
+      continue
+    }
   }
+  
+  console.warn('⚠️ All IP services failed, using fallback')
+  return 'unknown'
 }
 
 /**
@@ -579,11 +603,20 @@ export async function getIpGeolocation(ipAddress: string): Promise<any> {
   try {
     if (!ipAddress || ipAddress === 'unknown') return null
     
-    // Try multiple geolocation services for reliability
+    // Try multiple geolocation services with timeout
     const services = [
       // ipapi.co (free, HTTPS, 1000/day limit)
       async () => {
-        const response = await fetch(`https://ipapi.co/${ipAddress}/json/`)
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
+        
+        const response = await fetch(`https://ipapi.co/${ipAddress}/json/`, {
+          signal: controller.signal,
+          mode: 'cors',
+          headers: { 'Accept': 'application/json' }
+        })
+        clearTimeout(timeoutId)
+        
         if (!response.ok) throw new Error('ipapi.co failed')
         const data = await response.json()
         if (data.error) throw new Error(data.reason || 'Failed')
@@ -595,22 +628,39 @@ export async function getIpGeolocation(ipAddress: string): Promise<any> {
           region: data.region,
         }
       },
-      // ipapi.is (free, HTTPS, unlimited)
+      // ip-api.com (free, HTTPS, 45/min limit)
       async () => {
-        const response = await fetch(`https://api.ipapi.is/?q=${ipAddress}`)
-        if (!response.ok) throw new Error('ipapi.is failed')
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
+        
+        const response = await fetch(`http://ip-api.com/json/${ipAddress}`, {
+          signal: controller.signal,
+          mode: 'cors'
+        })
+        clearTimeout(timeoutId)
+        
+        if (!response.ok) throw new Error('ip-api.com failed')
         const data = await response.json()
+        if (data.status === 'fail') throw new Error(data.message)
         return {
-          country: data.location?.country,
-          city: data.location?.city,
-          lat: data.location?.latitude,
-          lng: data.location?.longitude,
-          region: data.location?.state,
+          country: data.country,
+          city: data.city,
+          lat: data.lat,
+          lng: data.lon,
+          region: data.regionName,
         }
       },
-      // ip-api.com via proxy (backup - note: uses HTTP, may fail on HTTPS sites)
+      // freeipapi.com (backup)
       async () => {
-        const response = await fetch(`https://freeipapi.com/api/json/${ipAddress}`)
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
+        
+        const response = await fetch(`https://freeipapi.com/api/json/${ipAddress}`, {
+          signal: controller.signal,
+          mode: 'cors'
+        })
+        clearTimeout(timeoutId)
+        
         if (!response.ok) throw new Error('freeipapi failed')
         const data = await response.json()
         return {
@@ -624,13 +674,17 @@ export async function getIpGeolocation(ipAddress: string): Promise<any> {
     ]
 
     // Try services in order until one succeeds
-    for (const service of services) {
+    for (let i = 0; i < services.length; i++) {
       try {
-        const result = await service()
+        console.log(`🌍 Trying geolocation service ${i + 1}/${services.length}...`)
+        const result = await services[i]()
         console.log('✅ Geolocation fetched:', result.city, result.country)
         return result
-      } catch (err) {
-        console.warn('Geolocation service failed, trying next...', err)
+      } catch (err: any) {
+        console.warn(`❌ Geolocation service ${i + 1} failed:`, err.message)
+        if (i === services.length - 1) {
+          console.error('All geolocation services failed')
+        }
         continue
       }
     }

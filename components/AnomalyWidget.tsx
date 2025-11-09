@@ -2,12 +2,16 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Shield, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Shield, AlertTriangle, AlertCircle, CheckCircle, Check, AlertOctagon } from 'lucide-react'
 import { useAnomalyMonitor } from '@/hooks/useAnomalyMonitor'
 import { motion } from 'framer-motion'
+import { useState } from 'react'
+import toast from 'react-hot-toast'
 
 export function AnomalyWidget() {
-  const { anomalies, trustScore, securityStatus, isLoading } = useAnomalyMonitor()
+  const { anomalies, trustScore, securityStatus, isLoading, resolveAnomaly } = useAnomalyMonitor()
+  const [resolvingId, setResolvingId] = useState<string | null>(null)
 
   const getStatusIcon = () => {
     switch (securityStatus) {
@@ -111,7 +115,7 @@ export function AnomalyWidget() {
             </div>
           </div>
 
-          {anomalies.slice(0, 3).map((anomaly, index) => (
+          {anomalies.filter(a => !a.resolved).map((anomaly, index) => (
             <motion.div
               key={anomaly.id}
               initial={{ opacity: 0, x: -20 }}
@@ -119,7 +123,7 @@ export function AnomalyWidget() {
               transition={{ delay: index * 0.1 }}
               className="p-3 rounded-lg border"
             >
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <Badge
@@ -135,9 +139,48 @@ export function AnomalyWidget() {
                       {anomaly.anomaly_type.replace(/_/g, ' ')}
                     </span>
                   </div>
-                  <p className="text-sm">{anomaly.description}</p>
+                  <p className="text-sm mb-2">{anomaly.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(anomaly.detected_at).toLocaleString()}
+                  </p>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    setResolvingId(anomaly.id)
+                    try {
+                      await resolveAnomaly(anomaly.id)
+                      toast.success('Anomaly confirmed. Trust score restored.')
+                    } catch (error) {
+                      toast.error('Failed to resolve anomaly')
+                    } finally {
+                      setResolvingId(null)
+                    }
+                  }}
+                  disabled={resolvingId === anomaly.id}
+                  className="whitespace-nowrap"
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  It was me
+                </Button>
               </div>
+              {(anomaly.anomaly_type === 'ip_mismatch' || anomaly.severity === 'high' || anomaly.severity === 'critical') && (
+                <div className="mt-3 pt-3 border-t">
+                  <div className="flex gap-2 text-xs">
+                    <AlertOctagon className="h-4 w-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-muted-foreground">
+                      <p className="font-medium text-foreground mb-1">If this wasn't you:</p>
+                      <ul className="list-disc list-inside space-y-0.5">
+                        <li>Change your MetaMask password immediately</li>
+                        <li>Check for unauthorized wallet access</li>
+                        <li>Review recent file access logs</li>
+                        <li>Enable 2FA on your MetaMask account</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
             </motion.div>
           ))}
 

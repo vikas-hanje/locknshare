@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AnomalyRecord } from '@/types'
-import { getUserAnomalies, logActivity as logActivityToDb } from '@/lib/anomalyDetection'
+import { getUserAnomalies, logActivity as logActivityToDb, resolveAnomaly as resolveAnomalyDb } from '@/lib/anomalyDetection'
 import { AnomalyDetector } from '@/lib/anomalyDetection'
 import { useStore } from '@/store/useStore'
 
@@ -134,6 +134,12 @@ export function useAnomalyMonitor() {
     }
   }, [user, fetchAnomalies])
 
+  // Resolve an anomaly
+  const resolveAnomaly = useCallback(async (anomalyId: string) => {
+    await resolveAnomalyDb(anomalyId)
+    await fetchAnomalies()
+  }, [fetchAnomalies])
+
   return {
     anomalies,
     trustScore,
@@ -142,5 +148,6 @@ export function useAnomalyMonitor() {
     fetchAnomalies,
     logActivity,
     runDetection,
+    resolveAnomaly,
   }
 }

@@ -54,7 +54,7 @@ const SidebarComponent = () => {
       >
         <div className="p-6 border-b flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center shadow-lg">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
               <Shield className="h-5 w-5 text-white" />
             </div>
             <div>

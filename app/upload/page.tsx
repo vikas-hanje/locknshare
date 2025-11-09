@@ -150,8 +150,10 @@ export default function UploadPage() {
         console.log(`✅ Encrypted keys for ${sharedKeys.length} users`)
       }
       
-      // Only store additional recipients in shared_with (not owner)
-      const normalizedSharedWith = additionalRecipients
+      // Store ALL recipients in shared_with including owner for cross-device queries
+      const normalizedSharedWith = user.username 
+        ? [user.username.toLowerCase(), ...additionalRecipients]
+        : additionalRecipients
 
       setTotalProgress(90)
 

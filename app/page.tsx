@@ -93,11 +93,11 @@ export default function LandingPage() {
               transition={{ duration: 0.5 }}
             >
               <Link href="/" className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center shadow-lg">
+                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
                   <Shield className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-purple-800">
+                  <h1 className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-500 to-blue-600">
                     LockNShare
                   </h1>
                 </div>
