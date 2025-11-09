@@ -176,11 +176,19 @@ export default function LandingPage() {
             <div className="w-full sm:w-auto">
               <ConnectWallet />
             </div>
-            <Button variant="outline" size="lg" asChild className="w-auto">
-              <Link href="#features" className="flex items-center gap-2">
-                Learn More
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="w-auto"
+              onClick={() => {
+                const element = document.getElementById('features')
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+              }}
+            >
+              Learn More
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </motion.div>
         </motion.div>

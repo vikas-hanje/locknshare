@@ -7,21 +7,19 @@ export const size = {
 }
 export const contentType = 'image/png'
  
-// Image generation
+// Image generation - Matches the main website logo (Shield icon with gradient)
 export default function Icon() {
   return new ImageResponse(
     (
       <div
         style={{
-          fontSize: 24,
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           width: '100%',
           height: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'white',
-          borderRadius: '6px',
+          borderRadius: '20%',
         }}
       >
         <svg
@@ -29,13 +27,13 @@ export default function Icon() {
           height="20"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
+          stroke="white"
+          strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          {/* Shield icon - matches main website */}
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       </div>
     ),

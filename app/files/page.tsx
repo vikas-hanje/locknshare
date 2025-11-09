@@ -147,8 +147,7 @@ export default function FilesPage() {
         throw new Error('Missing encryption metadata')
       }
 
-      // Determine which encrypted key to use
-      let encryptedKeyToUse = file.encrypted_key
+      let decryptedData: ArrayBuffer | null = null
       const isSharedFile = file.user_id !== user?.id
       
       console.log('🔍 Decryption Debug:', {
@@ -159,8 +158,11 @@ export default function FilesPage() {
         sharedUsers: file.shared_with,
       })
       
+      // Try primary decryption first (owner's key or correct shared key)
+      let encryptedKeyToUse = file.encrypted_key
+      
       if (isSharedFile && file.shared_keys && user?.username) {
-        // This is a shared file - find the key encrypted for this user
+        // This is a shared file - try to find the key encrypted for this user
         const myUsername = user.username.toLowerCase()
         console.log('📋 Available shared keys:', file.shared_keys.map((k: any) => k.username))
         
@@ -170,35 +172,77 @@ export default function FilesPage() {
           return keyUsername === myUsername
         })
         
-        if (sharedKey) {
+        if (sharedKey && sharedKey.encrypted_aes_key) {
           encryptedKeyToUse = sharedKey.encrypted_aes_key
           console.log(`✅ Using shared key for @${myUsername}`)
-        } else {
-          console.error('❌ No matching key found in shared_keys:', file.shared_keys)
-          throw new Error(`No encryption key found for @${myUsername}. File owner needs to re-share the file.`)
         }
-      } else if (isSharedFile) {
-        console.error('❌ Shared file but missing required data:', {
-          hasSharedKeys: !!file.shared_keys,
-          hasUsername: !!user?.username
-        })
-        throw new Error('Unable to decrypt shared file - missing encryption keys')
       }
 
-      // Prepare encryption data for decryption
-      const encryptionResult = {
-        encryptedData: encryptedData,
-        encryptedKey: encryptedKeyToUse,
-        iv: file.iv,
+      // Attempt decryption with primary key
+      try {
+        const encryptionResult = {
+          encryptedData: encryptedData,
+          encryptedKey: encryptedKeyToUse,
+          iv: file.iv,
+        }
+
+        decryptedData = await decrypt(encryptionResult, keyPair.privateKey)
+        if (decryptedData) {
+          console.log('✅ Primary decryption successful')
+        }
+      } catch (primaryError) {
+        console.warn('❌ Primary decryption failed:', primaryError)
+        decryptedData = null
       }
 
-      // Decrypt
-      const decryptedData = await decrypt(encryptionResult, keyPair.privateKey)
+      // Fallback: If primary failed, try with owner's key (cross-device scenario)
+      if (!decryptedData && encryptedKeyToUse !== file.encrypted_key) {
+        console.log('🔄 Trying fallback with owner key...')
+        try {
+          const fallbackResult = {
+            encryptedData: encryptedData,
+            encryptedKey: file.encrypted_key,
+            iv: file.iv,
+          }
+          
+          decryptedData = await decrypt(fallbackResult, keyPair.privateKey)
+          if (decryptedData) {
+            console.log('✅ Fallback decryption successful with owner key!')
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback decryption also failed:', fallbackError)
+        }
+      }
+
+      // Second fallback: Try all shared keys if available
+      if (!decryptedData && file.shared_keys && file.shared_keys.length > 0 && user?.username) {
+        console.log('🔄 Trying all available shared keys...')
+        
+        for (const sharedKey of file.shared_keys) {
+          if (sharedKey.encrypted_aes_key) {
+            try {
+              const attemptResult = {
+                encryptedData: encryptedData,
+                encryptedKey: sharedKey.encrypted_aes_key,
+                iv: file.iv,
+              }
+              
+              decryptedData = await decrypt(attemptResult, keyPair.privateKey)
+              if (decryptedData) {
+                console.log(`✅ Successfully decrypted with key for @${sharedKey.username}`)
+                break
+              }
+            } catch {
+              // Continue to next key
+              continue
+            }
+          }
+        }
+      }
+
+      // Final check
       if (!decryptedData) {
-        if (isSharedFile) {
-          throw new Error('Decryption failed - your encryption key may have changed')
-        }
-        throw new Error('Decryption failed - wrong encryption key')
+        throw new Error('Decryption failed with all available keys. File owner may need to re-share.')
       }
 
       // Create blob

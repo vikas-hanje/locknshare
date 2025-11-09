@@ -49,17 +49,68 @@ export default function SearchPage() {
         throw new Error('Missing encryption metadata')
       }
 
-      // Prepare encryption data for decryption
-      const encryptionResult = {
-        encryptedData: encryptedData,
-        encryptedKey: file.encrypted_key,
-        iv: file.iv,
+      let decryptedData: ArrayBuffer | null = null
+      let encryptedKeyToUse = file.encrypted_key
+      const isOwner = file.user_id === user?.id
+
+      console.log('🔍 Decryption attempt:', {
+        isOwner,
+        username: user?.username,
+        hasSharedKeys: !!file.shared_keys && file.shared_keys.length > 0
+      })
+
+      // Try normal decryption first
+      try {
+        const encryptionResult = {
+          encryptedData: encryptedData,
+          encryptedKey: encryptedKeyToUse,
+          iv: file.iv,
+        }
+
+        decryptedData = await decrypt(encryptionResult, keyPair.privateKey)
+        if (decryptedData) {
+          console.log('✅ Decryption successful with owner key')
+        }
+      } catch (primaryError) {
+        console.warn('❌ Primary decryption failed:', primaryError)
+        decryptedData = null
       }
 
-      // Decrypt
-      const decryptedData = await decrypt(encryptionResult, keyPair.privateKey)
+      // Fallback: If primary decryption failed and there are shared keys, try them
+      if (!decryptedData && file.shared_keys && file.shared_keys.length > 0 && user?.username) {
+        console.log('🔄 Attempting fallback decryption with shared keys...')
+        
+        const sharedKey = file.shared_keys.find((k: any) => {
+          const keyUsername = (k.username || '').toLowerCase()
+          const currentUsername = (user.username || '').toLowerCase()
+          return keyUsername === currentUsername
+        })
+
+        if (sharedKey && sharedKey.encrypted_aes_key) {
+          console.log(`🔑 Found shared key for @${user.username}, retrying...`)
+          
+          try {
+            const fallbackResult = {
+              encryptedData: encryptedData,
+              encryptedKey: sharedKey.encrypted_aes_key,
+              iv: file.iv,
+            }
+
+            decryptedData = await decrypt(fallbackResult, keyPair.privateKey)
+            if (decryptedData) {
+              console.log('✅ Decryption successful with shared key!')
+            }
+          } catch (fallbackError) {
+            console.error('❌ Fallback decryption also failed:', fallbackError)
+          }
+        } else {
+          console.warn('⚠️ No matching shared key found for user')
+        }
+      }
+
+      // Final check
       if (!decryptedData) {
-        throw new Error('Decryption failed')
+        throw new Error('Decryption failed with both owner and shared keys')
       }
 
       // Download
@@ -71,7 +122,7 @@ export default function SearchPage() {
 
       toast.success('File downloaded successfully', { id: 'download' })
     } catch (error: any) {
-      console.error('Download error:', error)
+      console.error('❌ Download error:', error)
       toast.error(error.message || 'Download failed', { id: 'download' })
     }
   }
