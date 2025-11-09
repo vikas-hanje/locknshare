@@ -16,11 +16,13 @@ import { useStore } from '@/store/useStore'
 import { getUserFiles, getUserStats } from '@/lib/supabase'
 import { formatBytes } from '@/lib/utils'
 import Link from 'next/link'
+import { useAnomalyMonitor } from '@/hooks/useAnomalyMonitor'
 
 export default function DashboardPage() {
   const router = useRouter()
   const { isConnected, user, files, setFiles, setUserStats, userStats } = useStore()
   const [isLoading, setIsLoading] = useState(true)
+  const { trustScore } = useAnomalyMonitor()
 
   useEffect(() => {
     if (!isConnected) {
@@ -158,20 +160,18 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className={`text-2xl font-bold ${
-                    (userStats?.trust_score || 100) >= 80 
-                      ? 'text-green-500' 
-                      : (userStats?.trust_score || 100) >= 50 
-                        ? 'text-yellow-500' 
-                        : 'text-red-500'
+                    trustScore >= 80 ? 'text-green-500' :
+                    trustScore >= 60 ? 'text-yellow-500' :
+                    trustScore >= 40 ? 'text-orange-500' :
+                    'text-red-500'
                   }`}>
-                    {userStats?.trust_score !== undefined ? userStats.trust_score : 100}%
+                    {trustScore}%
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {(userStats?.trust_score || 100) >= 80 
-                      ? 'All systems normal' 
-                      : (userStats?.trust_score || 100) >= 50 
-                        ? 'Minor security issues' 
-                        : 'Attention required'}
+                    {trustScore >= 80 ? 'All systems normal' :
+                     trustScore >= 60 ? 'Minor security issues' :
+                     trustScore >= 40 ? 'Security attention needed' :
+                     'Critical security alert'}
                   </p>
                 </CardContent>
               </Card>

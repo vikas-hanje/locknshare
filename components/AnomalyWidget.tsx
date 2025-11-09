@@ -110,7 +110,12 @@ export function AnomalyWidget() {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold">{trustScore}%</p>
+              <p className={`text-2xl font-bold ${
+                trustScore >= 80 ? 'text-green-500' :
+                trustScore >= 60 ? 'text-yellow-500' :
+                trustScore >= 40 ? 'text-orange-500' :
+                'text-red-500'
+              }`}>{trustScore}%</p>
               <p className="text-xs text-muted-foreground">Trust Score</p>
             </div>
           </div>
@@ -119,14 +124,16 @@ export function AnomalyWidget() {
             {anomalies.filter(a => !a.resolved).map((anomaly, index) => (
               <motion.div
                 key={anomaly.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20, height: 0, marginBottom: 0 }}
-                transition={{ 
-                  duration: 0.3,
-                  delay: index * 0.05 
+                initial={{ opacity: 0, x: -20, height: 0 }}
+                animate={{ opacity: 1, x: 0, height: 'auto' }}
+                exit={{ 
+                  opacity: 0, 
+                  x: 20, 
+                  height: 0,
+                  transition: { duration: 0.3, ease: 'easeInOut' }
                 }}
-                className="p-3 rounded-lg border mb-4"
+                transition={{ delay: index * 0.1 }}
+                className="p-3 rounded-lg border overflow-hidden"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
@@ -156,7 +163,10 @@ export function AnomalyWidget() {
                       setResolvingId(anomaly.id)
                       try {
                         await resolveAnomaly(anomaly.id)
-                        toast.success('Anomaly confirmed. Trust score restored.')
+                        toast.success('Anomaly confirmed. Trust score restored.', {
+                          icon: '✅',
+                          duration: 3000,
+                        })
                       } catch (error) {
                         toast.error('Failed to resolve anomaly')
                       } finally {

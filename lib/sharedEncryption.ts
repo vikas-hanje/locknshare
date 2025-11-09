@@ -70,33 +70,30 @@ export async function encryptKeyForUsersFromOwnerEncrypted(
  */
 export async function getPublicKeyForUsername(username: string): Promise<string | null> {
   try {
-    console.log(`🔍 Looking up public key for @${username}`)
+    const normalizedUsername = username.toLowerCase().trim()
+    console.log(`🔍 Looking up public key for username: "${normalizedUsername}"`)
     
     const { data, error } = await supabase
       .from('users')
       .select('public_key, id, wallet_address')
-      .eq('username', username)
+      .eq('username', normalizedUsername)
       .single()
 
     if (error) {
-      console.error(`❌ Database error fetching public key for @${username}:`, error.message)
+      console.error(`❌ Database error fetching public key for @${normalizedUsername}:`, error)
       return null
     }
 
-    if (!data) {
-      console.error(`❌ User @${username} not found in database`)
+    if (!data?.public_key) {
+      console.error(`❌ No public key found for @${normalizedUsername} (user exists but no key)`)
+      console.error('User details:', { id: data?.id, wallet: data?.wallet_address })
       return null
     }
 
-    if (!data.public_key) {
-      console.error(`❌ User @${username} exists but has no public key. They need to connect their wallet first.`)
-      return null
-    }
-
-    console.log(`✅ Found public key for @${username} (user_id: ${data.id})`)
+    console.log(`✅ Found public key for @${normalizedUsername}`)
     return data.public_key
   } catch (error) {
-    console.error('Error fetching public key:', error)
+    console.error(`❌ Exception fetching public key for @${username}:`, error)
     return null
   }
 }
@@ -109,18 +106,14 @@ export async function encryptKeyForUsers(
   aesKeyBase64: string,
   usernames: string[]
 ): Promise<EncryptedKeyForUser[]> {
-  console.log(`🔐 Encrypting AES key for ${usernames.length} users:`, usernames)
   const encryptedKeys: EncryptedKeyForUser[] = []
-  const errors: string[] = []
 
   for (const username of usernames) {
     try {
       // Get user's public key
       const publicKey = await getPublicKeyForUsername(username)
       if (!publicKey) {
-        const errorMsg = `@${username} - no public key available. User needs to connect wallet.`
-        console.warn(`⚠️ Skipping ${errorMsg}`)
-        errors.push(errorMsg)
+        console.warn(`⚠️ Skipping @${username} - no public key found`)
         continue
       }
 
@@ -151,20 +144,15 @@ export async function encryptKeyForUsers(
         username,
         encrypted_aes_key: arrayBufferToBase64(encryptedKey),
       })
-
-      console.log(`✅ Encrypted key for @${username}`)
-    } catch (error: any) {
-      const errorMsg = `@${username} - ${error.message || 'Unknown error'}`
-      console.error(`❌ Error encrypting key for ${errorMsg}`, error)
-      errors.push(errorMsg)
+      
+      console.log(`✅ Successfully encrypted key for @${username}`)
+    } catch (error) {
+      console.error(`❌ Error encrypting key for @${username}:`, error)
+      // Skip this user and continue with others
     }
   }
 
-  console.log(`📊 Encryption summary: ${encryptedKeys.length} successful, ${errors.length} failed`)
-  if (errors.length > 0) {
-    console.warn('⚠️ Failed users:', errors)
-  }
-
+  console.log(`🔐 Total encrypted keys created: ${encryptedKeys.length} out of ${usernames.length} users`)
   return encryptedKeys
 }
 

@@ -128,9 +128,6 @@ export function useEncryption() {
     async (userId: string, walletAddress: string): Promise<RSAKeyPair | null> => {
       setIsGenerating(true)
       try {
-        // Import savePublicKeyToDatabase at the beginning to avoid circular dependency
-        const { savePublicKeyToDatabase } = await import('@/lib/sharedEncryption')
-        
         // 1. Check localStorage first (fastest)
         const stored = localStorage.getItem(`encryption_keys_${walletAddress}`)
         if (stored) {
@@ -139,11 +136,6 @@ export function useEncryption() {
             if (keys && keys.publicKey && keys.privateKey) {
               console.log('✅ Restored keys from localStorage')
               console.log('🔑 Public Key (first 50 chars):', keys.publicKey.substring(0, 50))
-              
-              // Ensure public key is in database for file sharing (critical for cross-device)
-              await savePublicKeyToDatabase(userId, keys.publicKey)
-              console.log('✅ Public key ensured in database for file sharing')
-              
               return keys
             }
           } catch (parseError) {
@@ -166,11 +158,6 @@ export function useEncryption() {
           localStorage.setItem(`encryption_keys_${walletAddress}`, JSON.stringify(cloudKeys))
           console.log('✅ Keys retrieved from cloud and saved to localStorage')
           console.log('🔑 Public Key (first 50 chars):', cloudKeys.publicKey.substring(0, 50))
-          
-          // Save public key to database for file sharing
-          await savePublicKeyToDatabase(userId, cloudKeys.publicKey)
-          console.log('✅ Public key saved to database for file sharing')
-          
           toast.success('Keys synced from cloud ✓', { id: 'keys' })
           return cloudKeys
         }
@@ -184,10 +171,6 @@ export function useEncryption() {
         localStorage.setItem(`encryption_keys_${walletAddress}`, JSON.stringify(keyPair))
         console.log('💾 Saving keys to cloud...')
         await saveKeysToCloud(userId, walletAddress, keyPair, signature)
-        
-        // Save public key to database for file sharing
-        await savePublicKeyToDatabase(userId, keyPair.publicKey)
-        console.log('✅ Public key saved to database for file sharing')
         
         console.log('✅ New keys generated and saved')
         console.log('🔑 Public Key (first 50 chars):', keyPair.publicKey.substring(0, 50))

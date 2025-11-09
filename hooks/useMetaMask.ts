@@ -105,10 +105,14 @@ export function useMetaMask() {
           const keys = await initializeKeys(user.id, address)
           if (keys) {
             setKeyPair(keys)
-            // Save public key to database for file sharing
-            await savePublicKeyToDatabase(user.id, keys.publicKey)
-            console.log('✅ Encryption keys initialized and public key saved')
-            console.log('🔑 Public Key:', keys.publicKey.substring(0, 50) + '...')
+            // CRITICAL: Always save public key to database for cross-device file sharing
+            const saved = await savePublicKeyToDatabase(user.id, keys.publicKey)
+            if (saved) {
+              console.log('✅ Encryption keys initialized and public key saved to database')
+              console.log('🔑 Public Key (first 50 chars):', keys.publicKey.substring(0, 50) + '...')
+            } else {
+              console.warn('⚠️ Public key may not be saved to database - file sharing might not work')
+            }
           } else {
             console.error('❌ Failed to initialize encryption keys')
             toast.error('Failed to initialize encryption keys. Please reconnect.')
@@ -225,9 +229,14 @@ export function useMetaMask() {
               if (storedKeys) {
                 const keys = JSON.parse(storedKeys)
                 setKeyPair(keys)
-                // Ensure public key is in database
-                await savePublicKeyToDatabase(user.id, keys.publicKey)
-                console.log('✅ Encryption keys restored and public key ensured in database')
+                // CRITICAL: Ensure public key is in database for cross-device file sharing
+                const saved = await savePublicKeyToDatabase(user.id, keys.publicKey)
+                if (saved) {
+                  console.log('✅ Auto-connect: Encryption keys restored and public key saved to database')
+                  console.log('🔑 Public Key (first 50 chars):', keys.publicKey.substring(0, 50) + '...')
+                } else {
+                  console.warn('⚠️ Auto-connect: Public key may not be in database')
+                }
               } else {
                 // Keys not in localStorage - silently skip on auto-connect
                 // User will need to manually connect to trigger key sync

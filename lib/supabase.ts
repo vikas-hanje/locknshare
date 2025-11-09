@@ -12,13 +12,25 @@ export const supabase = createClient(supabaseUrl, supabaseKey)
  */
 export async function createOrUpdateUser(userData: Partial<User>): Promise<User | null> {
   try {
+    // When upserting, preserve existing public_key if not provided in userData
     const { data, error } = await supabase
       .from('users')
-      .upsert(userData, { onConflict: 'wallet_address' })
+      .upsert({
+        ...userData,
+        updated_at: new Date().toISOString()
+      }, { 
+        onConflict: 'wallet_address',
+        ignoreDuplicates: false 
+      })
       .select()
       .single()
 
     if (error) throw error
+    console.log('✅ User created/updated:', { 
+      id: data.id, 
+      wallet: data.wallet_address?.substring(0, 10) + '...',
+      hasPublicKey: !!data.public_key 
+    })
     return data
   } catch (error) {
     console.error('Error creating/updating user:', error)
@@ -59,14 +71,20 @@ export async function updateUserUsername(userId: string, username: string): Prom
       .trim()
       .replace(/^@/, '')
       .toLowerCase()
+    
+    // Only update username, preserve all other fields including public_key
     const { data, error } = await supabase
       .from('users')
-      .update({ username: normalized })
+      .update({ 
+        username: normalized,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', userId)
       .select()
       .single()
 
     if (error) throw error
+    console.log('✅ Username updated, public_key preserved')
     return data
   } catch (error) {
     console.error('Error updating username:', error)
