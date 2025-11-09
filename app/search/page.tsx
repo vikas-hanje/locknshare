@@ -50,16 +50,34 @@ export default function SearchPage() {
     }
 
     let decryptedData: ArrayBuffer | null = null
-    let encryptedKeyToUse = file.encrypted_key
     const isOwner = file.user_id === user?.id
 
-    console.log('🔍 Decryption attempt:', {
+    console.log('🔍 Search Page Decryption:', {
       isOwner,
       username: user?.username,
-      hasSharedKeys: !!file.shared_keys && file.shared_keys.length > 0
+      hasSharedKeys: !!file.shared_keys && file.shared_keys.length > 0,
+      sharedKeys: file.shared_keys?.map((k: any) => k.username)
     })
 
-    // Try normal decryption first
+    // Try to find user's specific key in shared_keys first (for cross-device)
+    let encryptedKeyToUse = file.encrypted_key
+    
+    if (file.shared_keys && user?.username) {
+      const myUsername = user.username.toLowerCase()
+      console.log('📋 Looking for shared key for:', myUsername)
+      
+      const sharedKey = file.shared_keys.find((k: any) => {
+        const keyUsername = (k.username || '').toLowerCase()
+        return keyUsername === myUsername
+      })
+      
+      if (sharedKey && sharedKey.encrypted_aes_key) {
+        encryptedKeyToUse = sharedKey.encrypted_aes_key
+        console.log(`✅ Using shared key for @${myUsername}`)
+      }
+    }
+
+    // Attempt decryption with selected key
     try {
       const encryptionResult = {
         encryptedData: encryptedData,
@@ -69,42 +87,52 @@ export default function SearchPage() {
 
       decryptedData = await decrypt(encryptionResult, keyPair.privateKey)
       if (decryptedData) {
-        console.log('✅ Decryption successful with owner key')
+        console.log('✅ Decryption successful')
       }
     } catch (primaryError) {
       console.warn('❌ Primary decryption failed:', primaryError)
       decryptedData = null
     }
 
-    // Fallback: If primary decryption failed and there are shared keys, try them
-    if (!decryptedData && file.shared_keys && file.shared_keys.length > 0 && user?.username) {
-      console.log('🔄 Attempting fallback decryption with shared keys...')
-      
-      const sharedKey = file.shared_keys.find((k: any) => {
-        const keyUsername = (k.username || '').toLowerCase()
-        const currentUsername = (user.username || '').toLowerCase()
-        return keyUsername === currentUsername
-      })
-
-      if (sharedKey && sharedKey.encrypted_aes_key) {
-        console.log(`🔑 Found shared key for @${user.username}, retrying...`)
-        
-        try {
-          const fallbackResult = {
-            encryptedData: encryptedData,
-            encryptedKey: sharedKey.encrypted_aes_key,
-            iv: file.iv,
-          }
-
-          decryptedData = await decrypt(fallbackResult, keyPair.privateKey)
-          if (decryptedData) {
-            console.log('✅ Decryption successful with shared key!')
-          }
-        } catch (fallbackError) {
-          console.error('❌ Fallback decryption also failed:', fallbackError)
+    // Fallback: Try owner's key if we tried shared key
+    if (!decryptedData && encryptedKeyToUse !== file.encrypted_key) {
+      console.log('🔄 Trying owner key as fallback...')
+      try {
+        const fallbackResult = {
+          encryptedData: encryptedData,
+          encryptedKey: file.encrypted_key,
+          iv: file.iv,
         }
-      } else {
-        console.warn('⚠️ No matching shared key found for user')
+        
+        decryptedData = await decrypt(fallbackResult, keyPair.privateKey)
+        if (decryptedData) {
+          console.log('✅ Fallback with owner key successful!')
+        }
+      } catch (fallbackError) {
+        console.error('❌ Fallback also failed:', fallbackError)
+      }
+    }
+
+    // Last resort: Try all shared keys
+    if (!decryptedData && file.shared_keys && file.shared_keys.length > 0) {
+      console.log('🔄 Trying all shared keys as last resort...')
+      for (const key of file.shared_keys) {
+        if (key.encrypted_aes_key) {
+          try {
+            const result = {
+              encryptedData: encryptedData,
+              encryptedKey: key.encrypted_aes_key,
+              iv: file.iv,
+            }
+            decryptedData = await decrypt(result, keyPair.privateKey)
+            if (decryptedData) {
+              console.log(`✅ Success with key for @${key.username}`)
+              break
+            }
+          } catch {
+            continue
+          }
+        }
       }
     }
 

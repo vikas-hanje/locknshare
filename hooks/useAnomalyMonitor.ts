@@ -136,7 +136,12 @@ export function useAnomalyMonitor() {
 
   // Resolve an anomaly
   const resolveAnomaly = useCallback(async (anomalyId: string) => {
-    await resolveAnomalyDb(anomalyId)
+    console.log('🔄 Resolving anomaly:', anomalyId)
+    const success = await resolveAnomalyDb(anomalyId)
+    if (!success) {
+      throw new Error('Failed to resolve anomaly in database')
+    }
+    console.log('✅ Anomaly resolved, refreshing list...')
     await fetchAnomalies()
   }, [fetchAnomalies])
 

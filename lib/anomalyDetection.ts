@@ -721,15 +721,24 @@ export async function getUserAnomalies(userId: string): Promise<AnomalyRecord[]>
  * Mark anomaly as resolved
  */
 export async function resolveAnomaly(anomalyId: string): Promise<boolean> {
-  const { error } = await supabase
-    .from('anomaly_records')
-    .update({ resolved: true })
-    .eq('id', anomalyId)
+  try {
+    console.log('📝 Updating anomaly in database:', anomalyId)
+    
+    const { data, error } = await supabase
+      .from('anomaly_records')
+      .update({ resolved: true })
+      .eq('id', anomalyId)
+      .select()
 
-  if (error) {
-    console.error('Error resolving anomaly:', error)
+    if (error) {
+      console.error('❌ Database error resolving anomaly:', error)
+      return false
+    }
+
+    console.log('✅ Anomaly marked as resolved in database:', data)
+    return true
+  } catch (err) {
+    console.error('❌ Exception resolving anomaly:', err)
     return false
   }
-
-  return true
 }

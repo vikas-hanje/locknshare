@@ -141,19 +141,25 @@ export default function UploadPage() {
       const uniqueRecipients = Array.from(new Set(allRecipients))
       
       if (uniqueRecipients.length > 0) {
-        console.log(`🔑 Encrypting file key for ${uniqueRecipients.length} users (including owner)...`)
+        console.log(`🔑 Encrypting file key for ${uniqueRecipients.length} users (including owner):`, uniqueRecipients)
         sharedKeys = await encryptKeyForUsersFromOwnerEncrypted(
           encryptedResult.encryptedKey,
           keyPair.privateKey,
           uniqueRecipients
         )
-        console.log(`✅ Encrypted keys for ${sharedKeys.length} users`)
+        console.log(`✅ Encrypted keys for ${sharedKeys.length} users:`, sharedKeys.map(k => k.username))
       }
       
       // Store ALL recipients in shared_with including owner for cross-device queries
       const normalizedSharedWith = user.username 
         ? [user.username.toLowerCase(), ...additionalRecipients]
         : additionalRecipients
+      
+      console.log('📋 File will be saved with:', {
+        owner: user.username,
+        shared_with: normalizedSharedWith,
+        shared_keys_count: sharedKeys.length
+      })
 
       setTotalProgress(90)
 

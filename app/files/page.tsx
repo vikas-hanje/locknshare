@@ -150,33 +150,36 @@ export default function FilesPage() {
       }
 
       let decryptedData: ArrayBuffer | null = null
-      const isSharedFile = file.user_id !== user?.id
+      const isOwner = file.user_id === user?.id
       
       console.log('🔍 Decryption Debug:', {
-        isSharedFile,
+        isOwner,
         currentUsername: user?.username?.toLowerCase(),
         hasSharedKeys: !!file.shared_keys,
         sharedKeysCount: file.shared_keys?.length || 0,
-        sharedUsers: file.shared_with,
+        sharedWith: file.shared_with,
+        sharedKeys: file.shared_keys?.map((k: any) => k.username),
       })
       
-      // Try primary decryption first (owner's key or correct shared key)
+      // Try to find user's specific key in shared_keys first (for cross-device)
       let encryptedKeyToUse = file.encrypted_key
       
-      if (isSharedFile && file.shared_keys && user?.username) {
-        // This is a shared file - try to find the key encrypted for this user
+      if (file.shared_keys && user?.username) {
         const myUsername = user.username.toLowerCase()
-        console.log('📋 Available shared keys:', file.shared_keys.map((k: any) => k.username))
+        console.log('📋 Searching for key for:', myUsername)
         
         const sharedKey = file.shared_keys.find((k: any) => {
           const keyUsername = (k.username || '').toLowerCase()
-          console.log(`Comparing: "${keyUsername}" === "${myUsername}"`)
-          return keyUsername === myUsername
+          const match = keyUsername === myUsername
+          console.log(`  Checking: "${keyUsername}" ${match ? '✅' : '❌'}`)
+          return match
         })
         
         if (sharedKey && sharedKey.encrypted_aes_key) {
           encryptedKeyToUse = sharedKey.encrypted_aes_key
-          console.log(`✅ Using shared key for @${myUsername}`)
+          console.log(`✅ Found shared key for @${myUsername}, using it instead of owner key`)
+        } else {
+          console.log(`⚠️ No shared key found for @${myUsername}, will use owner key`)
         }
       }
 
