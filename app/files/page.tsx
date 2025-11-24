@@ -44,7 +44,7 @@ export default function FilesPage() {
 
     const fetchFiles = async () => {
       if (!user) return
-      
+
       // Restore encryption keys if not in store
       if (!keyPair && user.wallet_address) {
         const keys = await generateKeys(user.wallet_address)
@@ -57,13 +57,13 @@ export default function FilesPage() {
       try {
         // Get files owned by user + files shared with them
         const accessibleFiles = await getAccessibleFiles(user.id, user.username)
-        
+
         setFiles(accessibleFiles)
-        
+
         // Count shared files
         const ownedCount = accessibleFiles.filter(f => f.user_id === user.id).length
         const sharedCount = accessibleFiles.length - ownedCount
-        
+
         if (sharedCount > 0) {
           toast.success(`Loaded ${accessibleFiles.length} files (${sharedCount} shared with you)`, {
             duration: 3000
@@ -72,7 +72,7 @@ export default function FilesPage() {
 
         // Auto-backfill missing shared_keys for owned files
         // This fixes cases where recipients connected later or usernames changed case
-        ;(async () => {
+        ; (async () => {
           try {
             const ownedFiles = (accessibleFiles || []).filter(f => f.user_id === user.id)
             for (const file of ownedFiles) {
@@ -151,7 +151,7 @@ export default function FilesPage() {
 
       let decryptedData: ArrayBuffer | null = null
       const isOwner = file.user_id === user?.id
-      
+
       console.log('🔍 Decryption Debug:', {
         isOwner,
         currentUsername: user?.username?.toLowerCase(),
@@ -160,24 +160,31 @@ export default function FilesPage() {
         sharedWith: file.shared_with,
         sharedKeys: file.shared_keys?.map((k: any) => k.username),
       })
-      
+
       // Try to find user's specific key in shared_keys first (for cross-device)
+      // CRITICAL FIX: Even file owners need to use shared_keys for cross-browser access
+      // because file.encrypted_key might be encrypted with a different device's public key
       let encryptedKeyToUse = file.encrypted_key
-      
+
       if (file.shared_keys && user?.username) {
         const myUsername = user.username.toLowerCase()
         console.log('📋 Searching for key for:', myUsername)
-        
+
         const sharedKey = file.shared_keys.find((k: any) => {
           const keyUsername = (k.username || '').toLowerCase()
           const match = keyUsername === myUsername
           console.log(`  Checking: "${keyUsername}" ${match ? '✅' : '❌'}`)
           return match
         })
-        
+
         if (sharedKey && sharedKey.encrypted_aes_key) {
           encryptedKeyToUse = sharedKey.encrypted_aes_key
           console.log(`✅ Found shared key for @${myUsername}, using it instead of owner key`)
+        } else if (isOwner && file.shared_with && file.shared_with.length > 0) {
+          // CRITICAL: If owner has no shared_key entry but file is shared, 
+          // they need to create one for themselves for cross-browser access
+          console.warn(`⚠️ File owner @${myUsername} has no shared_key entry - this breaks cross-browser access`)
+          console.warn(`ℹ️ Will attempt decryption with owner key, but this may fail on different browser`)
         } else {
           console.log(`⚠️ No shared key found for @${myUsername}, will use owner key`)
         }
@@ -209,7 +216,7 @@ export default function FilesPage() {
             encryptedKey: file.encrypted_key,
             iv: file.iv,
           }
-          
+
           decryptedData = await decrypt(fallbackResult, keyPair.privateKey)
           if (decryptedData) {
             console.log('✅ Fallback decryption successful with owner key!')
@@ -222,7 +229,7 @@ export default function FilesPage() {
       // Second fallback: Try all shared keys if available
       if (!decryptedData && file.shared_keys && file.shared_keys.length > 0 && user?.username) {
         console.log('🔄 Trying all available shared keys...')
-        
+
         for (const sharedKey of file.shared_keys) {
           if (sharedKey.encrypted_aes_key) {
             try {
@@ -231,7 +238,7 @@ export default function FilesPage() {
                 encryptedKey: sharedKey.encrypted_aes_key,
                 iv: file.iv,
               }
-              
+
               decryptedData = await decrypt(attemptResult, keyPair.privateKey)
               if (decryptedData) {
                 console.log(`✅ Successfully decrypted with key for @${sharedKey.username}`)
@@ -252,13 +259,13 @@ export default function FilesPage() {
 
       // Create blob
       const blob = new Blob([decryptedData], { type: file.file_type })
-      
+
       if (isPreview) {
         // Open preview
         setPreviewFile(file)
         setPreviewBlob(blob)
         toast.success('File decrypted for preview', { id: 'download' })
-        
+
         // Log view activity
         await logActivity('view', {
           fileId: file.id,
@@ -269,7 +276,7 @@ export default function FilesPage() {
         // Download
         downloadFile(blob, file.file_name)
         toast.success('File downloaded successfully', { id: 'download' })
-        
+
         // Log download activity
         await logActivity('download', {
           fileId: file.id,
@@ -289,7 +296,7 @@ export default function FilesPage() {
   const handleDelete = async (file: any) => {
     const isOwner = file.user_id === user?.id
     const isShared = !isOwner
-    
+
     // Show confirm dialog
     setDeleteConfirm({ file, isShared })
   }
@@ -297,38 +304,38 @@ export default function FilesPage() {
   const executeDelete = async () => {
     if (!deleteConfirm) return
     const { file, isShared } = deleteConfirm
-    
+
     if (isShared) {
       // For shared files, just remove access for this user
       try {
         toast.loading('Removing shared file...', { id: 'delete' })
-        
+
         if (!user?.username) {
           throw new Error('Username not found')
         }
-        
+
         const currentUsername = user.username.toLowerCase()
-        
+
         // Remove this user from shared_with and shared_keys
         const updatedSharedWith = (file.shared_with || []).filter((u: string) => u !== currentUsername)
         const updatedSharedKeys = (file.shared_keys || []).filter((k: any) => k.username !== currentUsername)
-        
+
         console.log('🗑️ Removing user from shared file:', {
           fileId: file.id,
           currentUser: currentUsername,
           beforeSharedWith: file.shared_with,
           afterSharedWith: updatedSharedWith
         })
-        
+
         const success = await updateFileMetadata(file.id, {
           shared_with: updatedSharedWith,
           shared_keys: updatedSharedKeys,
         } as any)
-        
+
         if (success) {
           removeFile(file.id)
           toast.success('File deleted for me', { id: 'delete' })
-          
+
           // Refresh file list from database
           const refreshedFiles = await getAccessibleFiles(user.id, user.username)
           setFiles(refreshedFiles)
@@ -347,7 +354,7 @@ export default function FilesPage() {
         // Delete from IPFS first
         console.log('Unpinning from IPFS:', file.ipfs_hash)
         const unpinned = await unpinFromIPFS(file.ipfs_hash)
-        
+
         if (!unpinned) {
           console.warn('Failed to unpin from IPFS, continuing with database deletion')
         } else {
@@ -381,7 +388,7 @@ export default function FilesPage() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       <div className="lg:pl-64">
         {/* Header */}
         <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
@@ -404,8 +411,8 @@ export default function FilesPage() {
           {/* Filters */}
           <div className="flex items-center gap-4 mb-6">
             <div className="relative">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => setShowFilterMenu(!showFilterMenu)}
                 className="text-xs sm:text-sm"

@@ -222,28 +222,33 @@ export function useMetaMask() {
             setEnsName(ensName)
             setIsConnected(true)
             
-            // Initialize encryption keys on auto-connect (CRITICAL FOR FILE SHARING)
+            // Initialize encryption keys on auto-connect with cloud sync (CRITICAL FOR CROSS-BROWSER FILE ACCESS)
             try {
-              // Try to get keys from localStorage first (fast path)
-              const storedKeys = localStorage.getItem(`encryption_keys_${address}`)
-              if (storedKeys) {
-                const keys = JSON.parse(storedKeys)
+              // Initialize keys with cloud sync (same as manual connect)
+              // This enables cross-browser file access by retrieving keys from cloud
+              const keys = await initializeKeys(user.id, address)
+              if (keys) {
                 setKeyPair(keys)
                 // CRITICAL: Ensure public key is in database for cross-device file sharing
                 const saved = await savePublicKeyToDatabase(user.id, keys.publicKey)
                 if (saved) {
-                  console.log('✅ Auto-connect: Encryption keys restored and public key saved to database')
+                  console.log('✅ Auto-connect: Encryption keys initialized and synced from cloud')
                   console.log('🔑 Public Key (first 50 chars):', keys.publicKey.substring(0, 50) + '...')
                 } else {
                   console.warn('⚠️ Auto-connect: Public key may not be in database')
                 }
-              } else {
-                // Keys not in localStorage - silently skip on auto-connect
-                // User will need to manually connect to trigger key sync
-                console.warn('⚠️ No keys in localStorage - please reconnect to sync from cloud')
               }
-            } catch (keyError) {
-              console.error('Error initializing keys on auto-connect:', keyError)
+            } catch (keyError: any) {
+              // If user rejects signature, continue without keys
+              // They can manually reconnect later to sync
+              if (keyError.message?.includes('User rejected') || keyError.message?.includes('denied')) {
+                console.log('ℹ️ User skipped key sync - files won\'t be accessible until manual reconnect')
+                toast('🔑 Signature required to access encrypted files. Click "Connect Wallet" to sync.', {
+                  duration: 5000
+                })
+              } else {
+                console.error('Error initializing keys on auto-connect:', keyError)
+              }
               // Don't block auto-connect if key initialization fails
             }
           }

@@ -35,13 +35,13 @@ export function useEncryption() {
 
       // Generate new keys
       const keyPair = await generateRSAKeyPair()
-      
+
       // Store in localStorage if wallet address provided
       if (walletAddress) {
         localStorage.setItem(`encryption_keys_${walletAddress}`, JSON.stringify(keyPair))
         console.log('Stored encryption keys in localStorage')
       }
-      
+
       toast.success('Encryption keys generated successfully')
       return keyPair
     } catch (error) {
@@ -146,7 +146,7 @@ export function useEncryption() {
 
         // 2. Request wallet signature for cloud access
         console.log('📝 Requesting wallet signature for cloud key access...')
-        toast.loading('Sign message to access your encryption keys...', { id: 'keys' })
+        toast.loading('🔑 Sign message to sync your encryption keys from cloud...', { id: 'keys', duration: 10000 })
         const signature = await requestWalletSignature(walletAddress)
         console.log('✅ Wallet signature obtained')
 
@@ -171,7 +171,7 @@ export function useEncryption() {
         localStorage.setItem(`encryption_keys_${walletAddress}`, JSON.stringify(keyPair))
         console.log('💾 Saving keys to cloud...')
         await saveKeysToCloud(userId, walletAddress, keyPair, signature)
-        
+
         console.log('✅ New keys generated and saved')
         console.log('🔑 Public Key (first 50 chars):', keyPair.publicKey.substring(0, 50))
         toast.success('Encryption keys generated and saved ✓', { id: 'keys' })
