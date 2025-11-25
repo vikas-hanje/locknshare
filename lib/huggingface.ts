@@ -26,6 +26,7 @@ async function generateEmbeddingsLocal(
     const isSingleInput = typeof texts === 'string'
 
     console.log('🔄 Trying local AI server for embeddings...')
+    console.log(`   Server URL: ${AI_SERVER_URL}`)
 
     const response = await fetch(`${AI_SERVER_URL}/embeddings`, {
       method: 'POST',
@@ -33,7 +34,7 @@ async function generateEmbeddingsLocal(
       body: JSON.stringify(
         isSingleInput ? { text: texts } : { texts }
       ),
-      signal: AbortSignal.timeout(10000), // 10 second timeout
+      signal: AbortSignal.timeout(30000), // 30 second timeout (increased for ngrok latency)
     })
 
     if (!response.ok) {
@@ -48,7 +49,11 @@ async function generateEmbeddingsLocal(
     return [data.embedding]
 
   } catch (error: any) {
-    console.warn('⚠️  Local AI server unavailable:', error.message)
+    if (error.name === 'AbortError') {
+      console.warn('⚠️  Local AI server timeout (>30s) - falling back to cloud')
+    } else {
+      console.warn('⚠️  Local AI server unavailable:', error.message)
+    }
     return null
   }
 }
