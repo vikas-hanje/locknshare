@@ -45,7 +45,7 @@ interface LocationData {
  */
 export class AnomalyDetector {
   private hf: HfInference
-  
+
   constructor(apiKey: string) {
     this.hf = new HfInference(apiKey)
   }
@@ -55,18 +55,18 @@ export class AnomalyDetector {
    */
   async analyzeActivity(userId: string): Promise<AnomalyRecord[]> {
     const anomalies: AnomalyRecord[] = []
-    
+
     console.log(`🔍 Analyzing activity for user: ${userId}`)
-    
+
     try {
       // Get recent activity for rate checks (last 1 hour)
       const recentActivities = await this.getRecentActivities(userId, 1)
-      
+
       // Get wider activity window for other checks (last 24 hours)
       const allActivities = await this.getRecentActivities(userId, 24)
-      
+
       console.log(`📊 Found ${recentActivities.length} activities in last hour, ${allActivities.length} in last 24 hours`)
-      
+
       if (allActivities.length === 0) {
         console.log('No recent activities to analyze')
         return []
@@ -155,7 +155,7 @@ export class AnomalyDetector {
 
     if (failedLogins.length >= ANOMALY_RULES.maxFailedLogins) {
       const severity = failedLogins.length > 10 ? 'critical' : 'high'
-      
+
       return {
         id: crypto.randomUUID(),
         user_id: userId,
@@ -274,7 +274,7 @@ export class AnomalyDetector {
 
       if (distance > ANOMALY_RULES.maxDistanceKm) {
         const severity = distance > 1000 ? 'critical' : 'high'
-        
+
         return {
           id: crypto.randomUUID(),
           user_id: userId,
@@ -338,7 +338,7 @@ export class AnomalyDetector {
   }
 
   /**
-   * AI Analysis: Use HuggingFace to detect suspicious patterns
+   * AI Analysis: Use local AI server or HuggingFace Cloud to detect suspicious patterns
    */
   private async analyzeWithAI(
     userId: string,
@@ -346,10 +346,58 @@ export class AnomalyDetector {
   ): Promise<AnomalyRecord | null> {
     try {
       const summary = this.summarizeActivities(activities)
-      
+      const AI_SERVER_URL = process.env.NEXT_PUBLIC_AI_SERVER_URL || 'http://localhost:8000'
+
       console.log('🤖 Running AI analysis on activity summary...')
 
-      // Use zero-shot classification to detect anomalies
+      // Try local AI server first
+      try {
+        const response = await fetch(`${AI_SERVER_URL}/anomaly`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            activity_summary: summary,
+            user_id: userId
+          }),
+          signal: AbortSignal.timeout(15000), // 15 second timeout
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+
+          console.log(`✅ Local AI: ${result.top_label} (confidence: ${(result.confidence * 100).toFixed(1)}%)`)
+
+          // If suspicious and confidence is high enough
+          if (result.is_suspicious) {
+            const severity = result.confidence > 0.8 ? 'high' : 'medium'
+
+            return {
+              id: crypto.randomUUID(),
+              user_id: userId,
+              anomaly_type: 'suspicious_login',
+              severity,
+              description: `AI detected: ${result.top_label} (confidence: ${(result.confidence * 100).toFixed(1)}%)`,
+              detected_at: new Date().toISOString(),
+              resolved: false,
+              metadata: {
+                aiLabel: result.top_label,
+                confidence: result.confidence,
+                allScores: result.all_scores,
+                summary,
+                source: 'local'
+              },
+            }
+          }
+          return null
+        }
+      } catch (localError: any) {
+        console.warn('⚠️  Local AI server unavailable, trying cloud API...', localError.message)
+      }
+
+      // Fallback to HuggingFace cloud API
+      console.log('📡 Falling back to HuggingFace Cloud API...')
+
+      // Use zero-shot classification from cloud
       const result: any = await this.hf.zeroShotClassification({
         model: 'facebook/bart-large-mnli',
         inputs: summary,
@@ -366,11 +414,11 @@ export class AnomalyDetector {
       // HuggingFace returns array of labels sorted by score
       const labels = Array.isArray(result) ? result : (result.labels || [])
       const scores = Array.isArray(result) ? [] : (result.scores || [])
-      
+
       const topLabel = labels[0] || 'normal user activity'
       const confidence = scores[0] || 0
 
-      console.log(`AI Analysis Result: ${topLabel} (confidence: ${(confidence * 100).toFixed(1)}%)`)
+      console.log(`✅ Cloud AI: ${topLabel} (confidence: ${(confidence * 100).toFixed(1)}%)`)
 
       // If suspicious and confidence is high enough
       if (topLabel !== 'normal user activity' && confidence > 0.5) {
@@ -388,6 +436,7 @@ export class AnomalyDetector {
             aiLabel: topLabel,
             confidence,
             summary,
+            source: 'cloud'
           },
         }
       }
@@ -492,9 +541,9 @@ export class AnomalyDetector {
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(this.toRad(loc1.lat)) *
-        Math.cos(this.toRad(loc2.lat)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2)
+      Math.cos(this.toRad(loc2.lat)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     return R * c
@@ -567,21 +616,21 @@ export async function getUserIp(): Promise<string> {
     'https://api64.ipify.org?format=json',
     'https://api.my-ip.io/v2/ip.json',
   ]
-  
+
   for (const service of services) {
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
-      
-      const response = await fetch(service, { 
+
+      const response = await fetch(service, {
         signal: controller.signal,
         mode: 'cors'
       })
       clearTimeout(timeoutId)
-      
+
       const data = await response.json()
       const ip = data.ip || data.address
-      
+
       if (ip) {
         console.log(`✅ Got IP from ${service}:`, ip)
         return ip
@@ -591,7 +640,7 @@ export async function getUserIp(): Promise<string> {
       continue
     }
   }
-  
+
   console.warn('⚠️ All IP services failed, using fallback')
   return 'unknown'
 }
@@ -602,21 +651,21 @@ export async function getUserIp(): Promise<string> {
 export async function getIpGeolocation(ipAddress: string): Promise<any> {
   try {
     if (!ipAddress || ipAddress === 'unknown') return null
-    
+
     // Try multiple geolocation services with timeout
     const services = [
       // ipapi.co (free, HTTPS, 1000/day limit)
       async () => {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 5000)
-        
+
         const response = await fetch(`https://ipapi.co/${ipAddress}/json/`, {
           signal: controller.signal,
           mode: 'cors',
           headers: { 'Accept': 'application/json' }
         })
         clearTimeout(timeoutId)
-        
+
         if (!response.ok) throw new Error('ipapi.co failed')
         const data = await response.json()
         if (data.error) throw new Error(data.reason || 'Failed')
@@ -632,13 +681,13 @@ export async function getIpGeolocation(ipAddress: string): Promise<any> {
       async () => {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 5000)
-        
+
         const response = await fetch(`http://ip-api.com/json/${ipAddress}`, {
           signal: controller.signal,
           mode: 'cors'
         })
         clearTimeout(timeoutId)
-        
+
         if (!response.ok) throw new Error('ip-api.com failed')
         const data = await response.json()
         if (data.status === 'fail') throw new Error(data.message)
@@ -654,13 +703,13 @@ export async function getIpGeolocation(ipAddress: string): Promise<any> {
       async () => {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 5000)
-        
+
         const response = await fetch(`https://freeipapi.com/api/json/${ipAddress}`, {
           signal: controller.signal,
           mode: 'cors'
         })
         clearTimeout(timeoutId)
-        
+
         if (!response.ok) throw new Error('freeipapi failed')
         const data = await response.json()
         return {
@@ -688,7 +737,7 @@ export async function getIpGeolocation(ipAddress: string): Promise<any> {
         continue
       }
     }
-    
+
     console.warn('All geolocation services failed')
     return null
   } catch (error) {
@@ -723,7 +772,7 @@ export async function getUserAnomalies(userId: string): Promise<AnomalyRecord[]>
 export async function resolveAnomaly(anomalyId: string): Promise<boolean> {
   try {
     console.log('📝 Updating anomaly in database:', anomalyId)
-    
+
     const { data, error } = await supabase
       .from('anomaly_records')
       .update({ resolved: true })

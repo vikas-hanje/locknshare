@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:ai": "cd ai-server && python main.py",
     "build": "next build",
     "start": "next start",
+    "start:ai": "cd ai-server && python main.py",
     "lint": "next lint"
   },
   "dependencies": {

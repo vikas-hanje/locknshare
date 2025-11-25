@@ -17,7 +17,7 @@ export function useMetaMask() {
   const [provider, setProvider] = useState<BrowserProvider | null>(null)
   const [signer, setSigner] = useState<JsonRpcSigner | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  
+
   const {
     setUser,
     setWalletAddress,
@@ -26,7 +26,7 @@ export function useMetaMask() {
     setKeyPair,
     logout: storeLogout,
   } = useStore()
-  
+
   const { initializeKeys } = useEncryption()
 
   // Check if MetaMask is installed
@@ -55,7 +55,7 @@ export function useMetaMask() {
     setIsLoading(true)
     try {
       const web3Provider = new BrowserProvider(window.ethereum)
-      
+
       // Request account access
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
@@ -63,7 +63,7 @@ export function useMetaMask() {
 
       const address = accounts[0]
       const web3Signer = await web3Provider.getSigner()
-      
+
       // Get ENS name if available
       let ensName = null
       try {
@@ -78,7 +78,7 @@ export function useMetaMask() {
 
       // Check if user exists in database
       let user = await getUserByWallet(address)
-      
+
       if (!user) {
         // Create new user
         user = await createOrUpdateUser({
@@ -99,19 +99,23 @@ export function useMetaMask() {
         setWalletAddress(address)
         setEnsName(ensName)
         setIsConnected(true)
-        
+
         // Initialize encryption keys with cross-device sync
         try {
           const keys = await initializeKeys(user.id, address)
           if (keys) {
             setKeyPair(keys)
-            // CRITICAL: Always save public key to database for cross-device file sharing
+            // CRITICAL FIX: Force update public key in database to match current keypair
+            // This ensures shared_keys are encrypted with the correct public key
+            console.log('🔄 Force-updating public key in database to match current keypair...')
             const saved = await savePublicKeyToDatabase(user.id, keys.publicKey)
             if (saved) {
-              console.log('✅ Encryption keys initialized and public key saved to database')
+              console.log('✅ Encryption keys initialized and public key FORCE-SYNCED to database')
               console.log('🔑 Public Key (first 50 chars):', keys.publicKey.substring(0, 50) + '...')
             } else {
-              console.warn('⚠️ Public key may not be saved to database - file sharing might not work')
+              console.error('❌ CRITICAL: Failed to save public key to database!')
+              console.error('⚠️ Cross-browser file access will NOT work until public key is synced!')
+              toast.error('Failed to sync public key - cross-browser access may not work')
             }
           } else {
             console.error('❌ Failed to initialize encryption keys')
@@ -122,10 +126,10 @@ export function useMetaMask() {
           toast.error('Error initializing encryption keys')
           // Don't block login if key initialization fails
         }
-        
+
         // Log login activity for anomaly detection
         await logActivity(user.id, 'login', { success: true })
-        
+
         toast.success(`Connected to ${ensName || address.slice(0, 6)}...${address.slice(-4)}`)
       }
     } catch (error: any) {
@@ -144,10 +148,10 @@ export function useMetaMask() {
     setWalletAddress(null)
     setEnsName(null)
     setIsConnected(false)
-    
+
     // Set flag to prevent auto-reconnect
     localStorage.setItem('wallet_disconnected', 'true')
-    
+
     toast.success('Wallet disconnected')
   }, [setUser, setWalletAddress, setEnsName, setIsConnected])
 
@@ -183,13 +187,13 @@ export function useMetaMask() {
   useEffect(() => {
     const autoConnect = async () => {
       if (!isMetaMaskInstalled()) return
-      
+
       // Check if user manually disconnected
       const wasDisconnected = localStorage.getItem('wallet_disconnected')
       if (wasDisconnected === 'true') {
         return
       }
-      
+
       // Check if already connected in store
       const { isConnected } = useStore.getState()
       if (isConnected) return
@@ -204,7 +208,7 @@ export function useMetaMask() {
           const address = accounts[0]
           const web3Provider = new BrowserProvider(window.ethereum)
           const web3Signer = await web3Provider.getSigner()
-          
+
           let ensName = null
           try {
             ensName = await web3Provider.lookupAddress(address)
@@ -213,7 +217,7 @@ export function useMetaMask() {
           }
 
           const user = await getUserByWallet(address)
-          
+
           if (user) {
             setProvider(web3Provider)
             setSigner(web3Signer)
@@ -221,7 +225,7 @@ export function useMetaMask() {
             setWalletAddress(address)
             setEnsName(ensName)
             setIsConnected(true)
-            
+
             // Initialize encryption keys on auto-connect with cloud sync (CRITICAL FOR CROSS-BROWSER FILE ACCESS)
             try {
               // Initialize keys with cloud sync (same as manual connect)
@@ -229,13 +233,16 @@ export function useMetaMask() {
               const keys = await initializeKeys(user.id, address)
               if (keys) {
                 setKeyPair(keys)
-                // CRITICAL: Ensure public key is in database for cross-device file sharing
+                // CRITICAL FIX: Force update public key in database to match current keypair
+                // This ensures shared_keys created during upload match the keys used for decryption
+                console.log('🔄 Auto-connect: Force-updating public key in database...')
                 const saved = await savePublicKeyToDatabase(user.id, keys.publicKey)
                 if (saved) {
-                  console.log('✅ Auto-connect: Encryption keys initialized and synced from cloud')
+                  console.log('✅ Auto-connect: Encryption keys initialized and public key FORCE-SYNCED')
                   console.log('🔑 Public Key (first 50 chars):', keys.publicKey.substring(0, 50) + '...')
                 } else {
-                  console.warn('⚠️ Auto-connect: Public key may not be in database')
+                  console.error('❌ Auto-connect: Failed to sync public key to database')
+                  console.error('⚠️ Cross-browser file access may fail until manual reconnect!')
                 }
               }
             } catch (keyError: any) {

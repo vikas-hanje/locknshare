@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  ai-server:
+    build: .
+    container_name: locknshare-ai-server
+    ports:
+      - "8000:8000"
+    volumes:
+      # Cache models to avoid re-downloading
+      - ai-models-cache:/root/.cache/huggingface
+      # Mount main.py for development (hot reload)
+      - ./main.py:/app/main.py
+    environment:
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+volumes:
+  ai-models-cache:
+    driver: local
