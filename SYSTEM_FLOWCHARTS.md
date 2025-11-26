@@ -110,19 +110,8 @@ flowchart TD
     %% Logout
     Action -->|Logout| ClearSession[Clear User Session]
     ClearSession --> End([Return to Landing Page])
-    
-    style Start fill:#90EE90
-    style End fill:#FFB6C1
-    style SaveDB fill:#87CEEB
-    style FetchCID fill:#87CEEB
-    style VectorSearch fill:#87CEEB
-    style CreateShare fill:#87CEEB
-    style FetchLogs fill:#87CEEB
-    style LocalEmbed fill:#FFD700
-    style LocalSearchEmbed fill:#FFD700
-    style CloudEmbed fill:#FFA500
-    style CloudSearchEmbed fill:#FFA500
 ```
+
 
 ---
 
@@ -237,28 +226,8 @@ flowchart TD
     
     SaveTrust --> DisplaySecurity[/Update Security Dashboard/]
     DisplaySecurity --> End2([Monitoring Continues])
-    
-    style Start fill:#90EE90
-    style End1 fill:#90EE90
-    style End2 fill:#90EE90
-    style ActivityData fill:#87CEEB
-    style FetchRecent fill:#87CEEB
-    style CreateRecord1 fill:#87CEEB
-    style CreateRecord2 fill:#87CEEB
-    style CreateRecord3 fill:#87CEEB
-    style CreateRecord4 fill:#87CEEB
-    style SaveTrust fill:#87CEEB
-    style LocalAI fill:#FFD700
-    style ClassifyLocal fill:#FFD700
-    style CloudAI fill:#FFA500
-    style ClassifyCloud fill:#FFA500
-    style NoAnomaly fill:#90EE90
-    style LowConfAnomaly fill:#FFFF99
-    style MediumAnomaly fill:#FFD700
-    style HighAnomaly fill:#FFA500
-    style CriticalAnomaly fill:#FF6B6B
-    style BlockAction fill:#FF0000
 ```
+
 
 ---
 
@@ -273,18 +242,6 @@ flowchart TD
 | **Diamond** `{...}` | Decision | Conditional branches, yes/no questions |
 | **Parallelogram** `[/.../]` | Input/Output | User interactions, display messages |
 | **Cylinder** `[(...)]` | Database | Data storage and retrieval |
-
-### Color Coding
-
-| Color | Meaning |
-|-------|---------|
-| 🟢 **Green** | Start/End points, Success states |
-| 🔵 **Light Blue** | Database operations |
-| 🟡 **Gold** | Local AI processing |
-| 🟠 **Orange** | Cloud API fallback |
-| 🟡 **Yellow** | Low severity alerts |
-| 🟠 **Orange** | Medium/High severity alerts |
-| 🔴 **Red** | Critical alerts, blocking actions |
 
 ---
 

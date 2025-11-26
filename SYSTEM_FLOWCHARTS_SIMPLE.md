@@ -46,17 +46,8 @@ flowchart TD
     Dashboard --> Logout{Logout?}
     Logout -->|Yes| End([Exit])
     Logout -->|No| Action
-    
-    style Start fill:#90EE90
-    style End fill:#FFB6C1
-    style SaveFile fill:#87CEEB
-    style ShareDB fill:#87CEEB
-    style SecurityFlow fill:#87CEEB
-    style UploadFlow fill:#FFE4B5
-    style SearchFlow fill:#FFE4B5
-    style AccessFlow fill:#FFE4B5
-    style ShareFlow fill:#FFE4B5
 ```
+
 
 ---
 
@@ -106,19 +97,8 @@ flowchart TD
     Trust4 --> Save
     
     Save --> End2([Monitoring Continues])
-    
-    style Trigger fill:#90EE90
-    style End1 fill:#90EE90
-    style End2 fill:#90EE90
-    style Log fill:#87CEEB
-    style Save fill:#87CEEB
-    style LocalAI fill:#FFD700
-    style CloudAI fill:#FFA500
-    style NoIssue fill:#90EE90
-    style Alert2 fill:#FFFF99
-    style Alert3 fill:#FFA500
-    style Alert1 fill:#FF6B6B
 ```
+
 
 ---
 
@@ -135,12 +115,8 @@ flowchart LR
     
     Local --> Success([Return Result])
     Cloud --> Success
-    
-    style Request fill:#90EE90
-    style Success fill:#90EE90
-    style Local fill:#FFD700
-    style Cloud fill:#FFA500
 ```
+
 
 ---
 
