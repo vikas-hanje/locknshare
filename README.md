@@ -1,366 +1,489 @@
 # LockNShare 🔐
 
-> **Secure Decentralized File Sharing Platform**  
-> End-to-end encrypted file storage with Web3 authentication, IPFS hosting, AI-powered search, and intelligent security monitoring.
+> **Secure Decentralized File Sharing with AI-Powered Intelligence**  
+> End-to-end encrypted file storage, Web3 authentication, IPFS hosting, semantic search, and intelligent security monitoring.
 
 ---
 
-## 🌟 Overview
+## 🌟 Quick Overview
 
-LockNShare is a next-generation file sharing platform that combines blockchain technology, decentralized storage, and AI to provide unparalleled security and privacy. Files are encrypted client-side before upload, stored on IPFS, and accessible only by authorized users with proper encryption keys.
+LockNShare is a next-generation file sharing platform combining blockchain, decentralized storage, and AI for unparalleled security and privacy.
 
-### Key Highlights
-- 🔐 **Military-grade Encryption**: RSA-2048 + AES-256-GCM hybrid encryption
-- 🌐 **Truly Decentralized**: IPFS storage via Pinata ensures data permanence
-- 👛 **Web3 Native**: MetaMask authentication with signature verification
-- 🤖 **AI-Enhanced**: Semantic search and anomaly detection
-- 🎨 **Modern UX**: Responsive design with smooth animations
-- 🔄 **Cross-Device Sync**: Cloud-synced encryption keys for seamless access
-- 👥 **File Sharing**: Username-based access control with multi-user support
+**Core Features:**
+- 🔐 **End-to-End Encryption** - AES-256-GCM client-side encryption
+- 🌐 **Decentralized Storage** - IPFS via Pinata
+- 👛 **Web3 Authentication** - MetaMask wallet login
+- 🤖 **AI-Powered Search** - Semantic file search with sentence transformers
+- 🛡️ **Smart Security** - AI anomaly detection + trust scoring
+- 📱 **Modern UI** - Responsive design with smooth animations
 
 ---
 
-## 🚀 Features
+## 📋 System Architecture
 
-### Core Functionality
-- **End-to-End Encryption**: All files encrypted client-side before transmission
-- **Decentralized Storage**: IPFS-based storage ensures censorship resistance
-- **Web3 Authentication**: Passwordless login via MetaMask wallet
-- **File Sharing**: Share files securely with multiple users by username
-- **Semantic Search**: AI-powered search finds files by meaning, not just keywords
-- **Access Control**: Granular permissions for file owners and recipients
+### Block Diagram
 
-### Security Features
-- **Anomaly Detection**: AI monitors for suspicious activity patterns
-- **Trust Scoring**: Real-time security score based on user behavior
-- **Activity Logging**: Complete audit trail of file access
-- **Geolocation Tracking**: IP-based location monitoring for logins
-- **Failed Login Alerts**: Automatic detection of brute-force attempts
+```mermaid
+block-beta
+  columns 4
+  
+  User["👤 User"]
+  Frontend["🎨 Frontend<br/>Next.js"]
+  AI["🤖 AI Layer<br/>Local/Cloud"]
+  Storage["💾 Storage<br/>IPFS + DB"]
+  
+  User --> Frontend
+  Frontend --> AI
+  Frontend --> Storage
+  AI --> Storage
+```
 
-### User Experience
-- **Dark/Light Mode**: System-aware theme switching
-- **Responsive Design**: Mobile-first approach works on all devices
-- **Image Cropping**: Professional profile picture editor
-- **Drag & Drop**: Intuitive file upload interface
-- **Real-time Feedback**: Instant UI updates with toast notifications
-- **Animated Transitions**: Smooth page transitions and micro-interactions
+### Complete Architecture
+
+```
+┌──────────────────────────────────────────────┐
+│              USER (Browser)                  │
+│           MetaMask Wallet Auth               │
+└───────────────────┬──────────────────────────┘
+                    │
+┌───────────────────▼──────────────────────────┐
+│          FRONTEND (Next.js/React)            │
+│  • UI Components  • File Handler            │
+│  • Upload/Download  • Search Interface       │
+└───┬──────────────┬──────────────┬────────────┘
+    │              │              │
+    ▼              ▼              ▼
+┌───────┐    ┌──────────┐    ┌──────────┐
+│ IPFS  │    │  AI      │    │ Database │
+│Files  │    │ Server   │    │Supabase  │
+│Pinata │    │Local/Cloud│   │+ pgvector│
+└───────┘    └──────────┘    └──────────┘
+                │                    │
+        ┌───────┴────────┐     ┌────┴─────┐
+        │ Embeddings     │     │ Metadata │
+        │ Classification │     │ Vectors  │
+        └────────────────┘     │ Users    │
+                               │ Files    │
+                               └──────────┘
+```
+
+---
+
+## 🔄 Key Workflows
+
+### 1. File Upload Flow
+
+```mermaid
+sequenceDiagram
+    User->>Frontend: Upload File
+    Frontend->>Frontend: Encrypt (AES-256)
+    Frontend->>IPFS: Store Encrypted File
+    IPFS-->>Frontend: Return CID
+    Frontend->>AI: Generate Embeddings
+    AI-->>Frontend: Return Vector
+    Frontend->>Database: Save Metadata + Vector
+    Database-->>User: Upload Complete
+```
+
+### 2. Semantic Search Flow
+
+```mermaid
+sequenceDiagram
+    User->>Frontend: Enter Query
+    Frontend->>AI: Generate Query Embedding
+    AI-->>Frontend: Return Vector
+    Frontend->>Database: Vector Similarity Search
+    Database-->>Frontend: Ranked Results
+    Frontend-->>User: Display Files
+```
+
+### 3. File Access Flow
+
+```
+User Request → Check Permissions → Download from IPFS → Decrypt → Deliver ✅
+```
+
+### 4. Security Monitoring
+
+```
+Activity → Log → AI Analysis → Anomaly Detection → Alert (if suspicious) → Trust Score Update
+```
 
 ---
 
 ## 🛠️ Technology Stack
 
 ### Frontend
-- **Framework**: Next.js 14 (App Router, React Server Components)
-- **Language**: TypeScript for type safety
-- **Styling**: TailwindCSS + ShadCN/UI component library
-- **State**: Zustand for global state management
-- **Animations**: Framer Motion for smooth transitions
-- **Crypto**: Web Crypto API for client-side encryption
+- **Next.js 14** - React framework with App Router
+- **TypeScript** - Type-safe development
+- **TailwindCSS** - Utility-first styling
+- **Framer Motion** - Smooth animations
 
 ### Backend & Infrastructure
-- **Database**: Supabase (PostgreSQL with real-time subscriptions)
-- **Storage**: Pinata (IPFS pinning service)
-- **Web3**: Ethers.js for wallet integration
-- **API**: Next.js API routes
+- **Supabase** - PostgreSQL database + real-time
+- **Pinata** - IPFS file storage
+- **pgvector** - Vector similarity search
 
-### AI & Machine Learning
-- **Embeddings**: HuggingFace sentence transformers for semantic search
-- **Anomaly Detection**: Rule-based + AI hybrid system
-- **Geolocation**: IP-based location services
+### AI Services
+- **Local AI Server** - FastAPI (Python)
+  - `sentence-transformers/all-MiniLM-L6-v2` - Embeddings (384-dim)
+  - `facebook/bart-large-mnli` - Classification
+- **Cloud Fallback** - HuggingFace Inference API
 
-## 📦 Installation
+### Security
+- **Encryption** - AES-256-GCM (Web Crypto API)
+- **Authentication** - MetaMask Web3 signatures
+- **Monitoring** - Hybrid AI + Rule-based detection
+
+---
+
+## 📦 Installation & Setup
 
 ### Prerequisites
-- **Node.js** 18+ and npm
-- **MetaMask** browser extension installed
-- **Supabase** account (free tier available)
-- **Pinata** IPFS account (free tier available)
-- **Git** for cloning the repository
+- Node.js 18+ and npm
+- MetaMask browser extension
+- Supabase account (free tier)
+- Pinata IPFS account (free tier)
+- Python 3.13+ (for local AI server)
 
 ### Quick Start
 
-1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/locknshare.git
+# 1. Clone repository
+git clone <your-repo-url>
 cd locknshare
-```
 
-2. **Install dependencies**
-```bash
+# 2. Install dependencies
 npm install
-```
 
-3. **Configure environment variables**
+# 3. Set up environment variables
+cp .env.local.example .env.local
+# Edit .env.local with your API keys
 
-Create a `.env.local` file in the root directory:
-
-```env
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Pinata IPFS Configuration
-NEXT_PUBLIC_PINATA_API_KEY=your_pinata_api_key
-NEXT_PUBLIC_PINATA_SECRET_KEY=your_pinata_secret_key
-NEXT_PUBLIC_PINATA_JWT=your_pinata_jwt
-NEXT_PUBLIC_PINATA_GATEWAY=https://gateway.pinata.cloud
-
-# HuggingFace API (Optional - for embeddings)
-NEXT_PUBLIC_HUGGINGFACE_API_KEY=your_huggingface_key
-```
-
-4. **Set up Supabase database**
-
-Run the SQL migrations in your Supabase SQL editor:
-```bash
-# Navigate to Supabase Dashboard > SQL Editor
-# Run the migration file: supabase/migrations/APPLY_MIGRATIONS.sql
-```
-
-5. **Run the development server**
-```bash
+# 4. Run development server
 npm run dev
 ```
 
-6. **Open in browser**
+### Environment Variables
 
-Navigate to [http://localhost:3000](http://localhost:3000)
+Create `.env.local`:
 
-7. **Connect your MetaMask wallet**
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_key
 
-Click "Connect Wallet" and approve the connection request in MetaMask.
+# Pinata IPFS
+NEXT_PUBLIC_PINATA_API_KEY=your_api_key
+NEXT_PUBLIC_PINATA_SECRET_KEY=your_secret
+NEXT_PUBLIC_PINATA_JWT=your_jwt
 
-## 🗄️ Database Architecture
+# HuggingFace (for AI)
+HUGGINGFACE_API_KEY=your_hf_key
+NEXT_PUBLIC_HUGGINGFACE_API_KEY=your_hf_key
 
-### Core Tables
+# AI Server (local or deployed)
+NEXT_PUBLIC_AI_SERVER_URL=http://localhost:8000
+AI_SERVER_FALLBACK=true
 
-#### `users`
-Stores user account information and encryption keys.
-```sql
-- id (uuid, primary key)
-- wallet_address (text, unique) -- Ethereum wallet address
-- ens_name (text, nullable) -- ENS domain if available
-- username (text, unique) -- User-chosen display name
-- public_key (text) -- RSA public key for encryption
-- profile_image_url (text) -- IPFS URL for avatar
-- created_at (timestamp)
-- updated_at (timestamp)
-- last_login (timestamp)
+# App URL
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-#### `user_keys`
-Cloud storage for encrypted private keys (cross-device sync).
-```sql
-- id (uuid, primary key)
-- user_id (uuid, foreign key)
-- encrypted_private_key (text) -- Private key encrypted with wallet signature
-- public_key (text) -- Corresponding public key
-- created_at (timestamp)
-- updated_at (timestamp)
+### Local AI Server Setup
+
+The AI server provides faster, private embeddings and anomaly detection.
+
+```bash
+# Navigate to AI server directory
+cd ai-server
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Run the server
+python main.py
+
+# Server starts on http://localhost:8000
 ```
 
-#### `file_metadata`
-File information and encryption metadata.
-```sql
-- id (uuid, primary key)
-- user_id (uuid, foreign key) -- File owner
-- file_name (text)
-- file_size (bigint)
-- file_type (text) -- MIME type
-- ipfs_hash (text) -- IPFS CID
-- encrypted (boolean) -- Always true
-- encrypted_key (text) -- Encrypted AES key (owner)
-- iv (text) -- Initialization vector
-- shared_with (text[]) -- Array of usernames with access
-- shared_keys (jsonb) -- Encrypted keys for shared users
-- description (text)
-- tags (text[])
-- embedding_vector (float[]) -- For semantic search
-- created_at (timestamp)
-- access_count (integer)
-```
-
-#### `access_logs`
-Audit trail for file access and user activities.
-```sql
-- id (uuid, primary key)
-- user_id (uuid, foreign key)
-- access_type (text) -- login, upload, download, delete, view, share
-- ip_address (text)
-- user_agent (text)
-- geolocation (jsonb) -- City, country, coordinates
-- timestamp (timestamp)
-- success (boolean)
-- metadata (jsonb) -- Additional context
-```
-
-#### `anomaly_records`
-Security alerts and suspicious activity logs.
-```sql
-- id (uuid, primary key)
-- user_id (uuid, foreign key)
-- anomaly_type (text) -- failed_logins, unusual_download, etc.
-- severity (text) -- low, medium, high, critical
-- description (text)
-- detected_at (timestamp)
-- resolved (boolean)
-- resolved_at (timestamp, nullable)
-```
-
-## 🎯 Usage Guide
-
-### Getting Started
-
-**1. Connect Your Wallet**
-- Click "Connect Wallet" in the header
-- Approve MetaMask connection request
-- Sign message to authenticate (no gas fees)
-- Encryption keys are automatically generated
-
-**2. Upload Files**
-- Navigate to `/upload`
-- Drag & drop files or click to browse
-- Add description and tags (optional)
-- **Share with users**: Enter `@username` to grant access
-- Files are encrypted client-side before upload
-- Stored on IPFS with encrypted metadata
-
-**3. Manage Files**
-- View all your files at `/files`
-- See files shared with you (marked with badge)
-- Download, preview, edit, or delete files
-- Edit tags and sharing permissions
-
-**4. Search Files**
-- Use semantic search at `/search`
-- Find files by meaning, not just keywords
-- AI understands context and synonyms
-
-**5. Monitor Security**
-- Check `/security` for anomaly alerts
-- View trust score and activity logs
-- Review suspicious access patterns
-
-**6. Customize Profile**
-- Update username at `/profile`
-- Upload and crop profile picture
-- View wallet address and ENS name
-
----
-
-## 🔒 Security Architecture
-
-### Encryption Model
-**Hybrid Encryption**: AES-256-GCM + RSA-2048
-
-1. **File Encryption**: Random AES-256 key encrypts file content
-2. **Key Encryption**: AES key encrypted with RSA-2048 public key
-3. **Storage**: Encrypted file on IPFS, encrypted key in database
-4. **Decryption**: Private key decrypts AES key, AES key decrypts file
-
-### Key Management
-- **Generation**: Keys generated in browser using Web Crypto API
-- **Storage**: Private keys stored in localStorage (never transmitted)
-- **Backup**: Encrypted keys synced to cloud with wallet signature
-- **Cross-Device**: Keys retrievable on new devices via signature
-
-### Access Control
-- **Owner**: Full control (read, write, delete, share)
-- **Recipients**: Read-only access to shared files
-- **Validation**: Username-based sharing with key re-encryption
-
-### Threat Protection
-- **Failed Login Detection**: Alerts after 5 failed attempts
-- **Geolocation Tracking**: IP-based location monitoring
-- **Rate Limiting**: Prevents brute-force and DDoS attacks
-- **Activity Logging**: Complete audit trail
-
----
-
-## 📱 Application Pages
-
-| Page | Route | Description |
-|------|-------|-------------|
-| **Landing** | `/` | Introduction, features, animated hero |
-| **Dashboard** | `/dashboard` | File overview, security status, recent activity |
-| **Upload** | `/upload` | File upload with encryption and sharing |
-| **My Files** | `/files` | Browse owned and shared files |
-| **Search** | `/search` | AI-powered semantic file search |
-| **Security** | `/security` | Anomaly alerts and trust score |
-| **Profile** | `/profile` | Account settings and profile picture |
-
----
-
-## 🎨 Design System
-
-### Color Palette
-- **Primary**: Purple gradient (#667eea to #764ba2)
-- **Light Mode**: Off-white background, dark text
-- **Dark Mode**: Slate/charcoal background, white text
-- **Accent**: Primary color for CTAs and highlights
-
-### Typography
-- **Font Family**: Inter (optimized with next/font)
-- **Headings**: Bold, gradient text for emphasis
-- **Body**: Regular weight, optimal line height
-
-### UI Components
-- Based on **ShadCN/UI** with custom styling
-- **Animations**: Framer Motion for smooth transitions
-- **Icons**: Lucide React for consistent iconography
-- **Responsive**: Mobile-first design approach
+**Key Features:**
+- ✅ 50-300ms response time (vs 500-2000ms cloud)
+- ✅ Privacy - data stays local
+- ✅ No API costs
+- ✅ Automatic fallback to cloud if unavailable
 
 ---
 
 ## 🚀 Deployment
 
-### Vercel (Recommended)
-```bash
-# Install Vercel CLI
-npm i -g vercel
+### Frontend (Vercel)
 
-# Deploy to production
-vercel --prod
+1. Push code to GitHub
+2. Import project in Vercel
+3. Add environment variables
+4. Deploy
+
+### AI Server Options
+
+**Option 1: Local (Demo/Development)**
+```bash
+# Run on your laptop
+cd ai-server
+python main.py
+
+# Expose with ngrok
+ngrok http 8000
 ```
 
-### Environment Variables
-Set in Vercel dashboard or `.env.production`:
-- All variables from `.env.local`
-- Add `NEXT_PUBLIC_APP_URL` with production URL
+**Option 2: Cloud (Production)**
+- Railway.app (~$5/month)
+- Render.com (~$7/month)
+- Fly.io (~$3/month)
 
-### Build
+**Option 3: Cloud Fallback Only**
+- Use `AI_SERVER_FALLBACK=true`
+- All requests go to HuggingFace API
+- No local server needed
+
+---
+
+## 🔐 Security Features
+
+### Encryption
+- **Client-Side**: AES-256-GCM encryption before upload
+- **Zero-Knowledge**: Server never sees plaintext
+- **Key Management**: Unique keys per file, shared securely
+
+### Authentication
+- **Web3 Based**: MetaMask signature verification
+- **No Passwords**: Cryptographic signatures only
+- **Session Management**: Secure JWT tokens
+
+### AI Anomaly Detection
+
+**Hybrid System:**
+1. **Rule-Based (Fast)**
+   - High frequency detection (>50 actions/hour)
+   - Odd hours activity (2 AM - 5 AM)
+   - New location access
+   - Rapid downloads
+
+2. **AI-Powered (Smart)**
+   - Zero-shot classification
+   - Context-aware analysis
+   - Behavioral pattern detection
+   - Confidence scoring
+
+**Response Levels:**
+- ✅ Normal (>80% confidence) → Log only → Trust +5
+- 🟡 Suspicious (>50%) → Notify user → Trust -25
+- 🟠 Threat (>50%) → Notify admin → Trust -50
+- 🔴 Critical → Block action → Trust -100
+
+### Trust Score System
+- **Range**: 0-100
+- **80-100**: Full access
+- **50-79**: Normal with monitoring
+- **20-49**: Restricted access
+- **0-19**: Account review required
+
+---
+
+## 🎯 Key Features Explained
+
+### 1. Semantic Search
+
+Traditional search finds exact keyword matches. Semantic search understands meaning.
+
+**Example:**
+- **Search:** "project presentation slides"
+- **Finds:** "Q4_Marketing_Deck.pptx", "Team_Proposal.pdf", "Product_Demo.ppt"
+- **Why:** AI understands "presentation" ≈ "deck" ≈ "slides"
+
+**How it works:**
+1. Files converted to 384-dimensional vectors
+2. Query converted to same vector space
+3. Cosine similarity finds close matches
+4. Results ranked by relevance
+
+### 2. File Sharing
+
+**Process:**
+1. Owner selects file and recipient username
+2. System shares encryption key with recipient
+3. Recipient can access file with granted permissions
+4. Owner can revoke access anytime
+
+**Permission Levels:**
+- Owner: Full control
+- Editor: View, download, share
+- Viewer: View, download only
+
+### 3. Decentralized Storage (IPFS)
+
+**Benefits:**
+- No single point of failure
+- Censorship resistant
+- Content-addressed (CID)
+- Files persist across network
+
+**How it works:**
+1. File uploaded to IPFS via Pinata
+2. Receives unique CID (Content Identifier)
+3. CID stored in database
+4. File retrieved using CID anytime
+
+---
+
+## 📊 Performance
+
+### Local AI Server
+- **Embeddings**: 50-300ms
+- **Classification**: 300-500ms
+- **Uptime**: Dependent on laptop/server
+
+### Cloud API Fallback
+- **Embeddings**: 500-2000ms
+- **Classification**: 1000-2000ms
+- **Uptime**: 99.9%
+
+### Database Queries
+- **Vector Search**: <100ms
+- **Metadata Fetch**: <50ms
+- **File List**: <100ms
+
+---
+
+## 🧪 Development
+
+### Run Development Server
+
 ```bash
-npm run build
-npm run start
+# Frontend only
+npm run dev
+
+# Frontend + AI server (concurrent)
+npm run dev:ai
+
+# AI server only
+cd ai-server && python main.py
 ```
+
+### Test AI Server
+
+```bash
+# Check health
+curl http://localhost:8000/health
+
+# Test embeddings
+curl -X POST http://localhost:8000/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{"text": "test document"}'
+
+# Test anomaly detection
+curl -X POST http://localhost:8000/anomaly \
+  -H "Content-Type: application/json" \
+  -d '{"summary": "User performed 50 uploads in 1 hour"}'
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**1. AI Server Not Responding**
+```bash
+# Check if running
+curl http://localhost:8000/health
+
+# Restart server
+cd ai-server
+python main.py
+```
+
+**2. CORS Errors**
+- Update `ALLOWED_ORIGINS` in `.env` or `ai-server/.env`
+- Add your Vercel URL to allowed origins
+- Restart AI server
+
+**3. Memory Issues (Laptop)**
+- BART model requires ~2-3GB RAM
+- Close unnecessary applications
+- Or disable classifier (embeddings still work)
+
+**4. Embeddings Using Cloud Instead of Local**
+- Check AI server is running
+- Verify `NEXT_PUBLIC_AI_SERVER_URL` is correct
+- Check timeout (increased to 30s for ngrok)
+
+---
+
+## 📚 API Documentation
+
+### AI Server Endpoints
+
+**Health Check**
+```
+GET /health
+Response: {"status": "healthy", "models_loaded": {...}}
+```
+
+**Generate Embeddings**
+```
+POST /embeddings
+Body: {"text": "your text here"}
+Response: {"embedding": [0.1, 0.2, ...], "dimensions": 384}
+```
+
+**Anomaly Detection**
+```
+POST /anomaly
+Body: {"summary": "activity description"}
+Response: {
+  "label": "normal user activity",
+  "confidence": 0.85,
+  "all_scores": {...}
+}
+```
+
+---
+
+## 🔮 Future Enhancements
+
+- [ ] File versioning
+- [ ] Collaborative editing
+- [ ] Mobile app (React Native)
+- [ ] Enhanced AI models
+- [ ] Blockchain integration for audit trail
+- [ ] Team workspaces
+- [ ] Advanced access controls
 
 ---
 
 ## 📄 License
 
-MIT License - Free for personal and commercial use.
+This project is licensed under the MIT License.
 
 ---
 
 ## 🙏 Acknowledgments
 
-- **Framework**: [Next.js](https://nextjs.org/)
-- **UI Library**: [ShadCN/UI](https://ui.shadcn.com/)
-- **Icons**: [Lucide](https://lucide.dev/)
-- **Storage**: [Pinata](https://pinata.cloud/)
-- **Database**: [Supabase](https://supabase.com/)
-- **Web3**: [Ethers.js](https://docs.ethers.org/)
-- **Animations**: [Framer Motion](https://www.framer.com/motion/)
+- **Next.js** - React framework
+- **Supabase** - Backend infrastructure
+- **Pinata** - IPFS storage
+- **HuggingFace** - AI models
+- **MetaMask** - Web3 authentication
+- **Vercel** - Hosting platform
 
 ---
 
-## 📞 Support
+## 📧 Support
 
-For issues, questions, or feature requests:
-- Open an issue on GitHub
-- Check existing documentation in `CHANGELOG.md`
+For issues, questions, or contributions, please open an issue on GitHub.
 
 ---
 
-**Built with ❤️ for secure, decentralized file sharing**  
-*Academic Year 2024-25*
+**Built with ❤️ using Next.js, AI, and Web3**
