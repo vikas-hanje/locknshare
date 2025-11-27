@@ -1,0 +1,14 @@
+# Core packages first
+fastapi>=0.100.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.5.0
+
+# PyTorch ecosystem (these work well with Python 3.13)
+torch>=2.0.0
+transformers>=4.35.0  
+sentence-transformers>=2.2.0
+
+# Other dependencies
+numpy>=1.26.0
+python-multipart
+python-dotenv
