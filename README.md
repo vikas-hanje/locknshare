@@ -48,7 +48,7 @@ block-beta
                     │
 ┌───────────────────▼──────────────────────────┐
 │          FRONTEND (Next.js/React)            │
-│  • UI Components  • File Handler            │
+│  • UI Components  • File Handler             │
 │  • Upload/Download  • Search Interface       │
 └───┬──────────────┬──────────────┬────────────┘
     │              │              │
