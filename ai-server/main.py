@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
     try:
         # Load embedding model (384-dimensional vectors)
         logger.info("📥 Loading sentence transformer model (all-MiniLM-L6-v2)...")
-        logger.info("   This may take a few minutes on first run while downloading...") 
+        logger.info("   This may take a few minutes on first run while downloading...")
         
         embedding_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
         logger.info("✅ Embedding model loaded successfully")
@@ -369,7 +369,7 @@ if __name__ == "__main__":
     import uvicorn
     
     logger.info("🚀 Starting server with uvicorn...")
-    uvicorn.run(
+    uvicorn.run( 
         app,
         host="0.0.0.0",
         port=8000,
