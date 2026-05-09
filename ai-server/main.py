@@ -72,21 +72,33 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Embedding model loaded successfully")
         logger.info(f"   Model dimension: {embedding_model.get_sentence_embedding_dimension()}")
         
-        # Load zero-shot classifier for anomaly detection
+        # Load zero-shot classifier for anomaly detection (optional - can fail on low RAM)
         logger.info("📥 Loading classifier model (bart-large-mnli)...")
         logger.info("   This is a larger model (~1.6GB), please wait...")
+        logger.info("   ⚠️  If this fails due to memory, server will work without anomaly detection")
         
-        device = 0 if torch.cuda.is_available() else -1
-        classifier_model = pipeline(
-            "zero-shot-classification",
-            model="facebook/bart-large-mnli",
-            device=device
-        )
-        logger.info("✅ Classifier model loaded successfully")
+        try:
+            device = 0 if torch.cuda.is_available() else -1
+            classifier_model = pipeline(
+                "zero-shot-classification",
+                model="facebook/bart-large-mnli",
+                device=device
+            )
+            logger.info("✅ Classifier model loaded successfully")
+        except OSError as e:
+            if "paging file" in str(e) or "memory" in str(e).lower():
+                logger.warning("⚠️  Classifier model failed to load (insufficient memory)")
+                logger.warning("   Server will work for embeddings only")
+                logger.warning("   Anomaly detection will use cloud API fallback")
+                classifier_model = None
+            else:
+                raise
         
         logger.info("=" * 60)
-        logger.info("🎉 All models loaded successfully!")
+        logger.info("🎉 Models loaded successfully!")
         logger.info("🌐 Server ready to accept requests")
+        logger.info(f"   Embedding model: {'✅ Loaded' if embedding_model else '❌ Failed'}")
+        logger.info(f"   Classifier model: {'✅ Loaded' if classifier_model else '⚠️  Skipped (low memory)'}")
         logger.info(f"💾 Memory usage: ~{_get_model_memory_mb():.0f} MB")
         logger.info("=" * 60)
         
@@ -357,7 +369,7 @@ if __name__ == "__main__":
     import uvicorn
     
     logger.info("🚀 Starting server with uvicorn...")
-    uvicorn.run(
+    uvicorn.run( 
         app,
         host="0.0.0.0",
         port=8000,
