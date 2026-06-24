@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS file_metadata (
   file_type TEXT NOT NULL,
   ipfs_hash TEXT NOT NULL,
   encrypted BOOLEAN DEFAULT true,
+  public_key_used TEXT,
   encrypted_key TEXT,
   iv TEXT,
   shared_with TEXT[] DEFAULT ARRAY[]::TEXT[],
